@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { withSentryConfig } from "@sentry/nextjs";
 
 if (process.env.NODE_ENV === 'production' && process.env.MOCK_SESSION_FOR_TEST) {
   throw new Error("SECURITY ERROR: MOCK_SESSION_FOR_TEST is not allowed in production environment!");
@@ -41,8 +40,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  silent: true,
-  org: "imex-ezbiz",
-  project: "imex-ezbiz",
-});
+export default nextConfig;
