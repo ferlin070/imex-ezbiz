@@ -16,6 +16,17 @@ export function createMockSupabaseClient(userId: string | null) {
         }
         return { error: null }
       },
+      admin: {
+        async createUser(payload: any) {
+          const email = payload.email
+          const existing = mockDb.getProfiles().find(p => p.email.toLowerCase() === email.toLowerCase())
+          if (existing) {
+            return { data: { user: null }, error: { message: 'User already exists' } }
+          }
+          const customId = `b-gen-${Math.random()}`
+          return { data: { user: { id: customId, email } }, error: null }
+        }
+      }
     },
     channel(name: string) {
       return {
@@ -121,7 +132,12 @@ export function createMockSupabaseClient(userId: string | null) {
                 const { judge } = mockDb.insertJudge(this._insertPayload.name, this._insertPayload.panel_label, this._insertPayload.email)
                 insertData = judge
               } else if (table === 'profiles') {
-                insertData = mockDb.insertEntrepreneur(this._insertPayload.name, this._insertPayload.email, this._insertPayload.project_id)
+                insertData = mockDb.insertEntrepreneur(
+                  this._insertPayload.name,
+                  this._insertPayload.email,
+                  this._insertPayload.project_id || null,
+                  this._insertPayload.id
+                )
               } else if (table === 'mara_access_log') {
                 insertData = mockDb.insertAccessLog(this._insertPayload.officer_id, this._insertPayload.project_id)
               } else if (table === 'grant_schemes') {

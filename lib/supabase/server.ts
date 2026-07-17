@@ -7,11 +7,13 @@ export async function createClient() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const isDummy = !url || !key || url.includes('dummy')
   
-  let mockSessionVal = null
-  try {
-    const cookieStore = await cookies()
-    mockSessionVal = cookieStore.get('imex_mock_session')?.value
-  } catch {}
+  let mockSessionVal = process.env.MOCK_SESSION_FOR_TEST || null
+  if (!mockSessionVal) {
+    try {
+      const cookieStore = await cookies()
+      mockSessionVal = cookieStore.get('imex_mock_session')?.value
+    } catch {}
+  }
 
   if (isDummy || mockSessionVal) {
     let userId = null
@@ -51,7 +53,7 @@ export async function createClient() {
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const isDummy = !url || !serviceKey || url.includes('dummy')
+  const isDummy = !url || !serviceKey || url.includes('dummy') || !!process.env.MOCK_SESSION_FOR_TEST
 
   if (isDummy) {
     return createMockSupabaseClient('admin-id-mock-uuid')

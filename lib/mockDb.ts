@@ -397,8 +397,8 @@ export const mockDb = {
     }
     return true
   },
-  insertEntrepreneur: (name: string, email: string, projectId: string | null) => {
-    const userId = `b-gen-${Math.random()}`
+  insertEntrepreneur: (name: string, email: string, projectId: string | null, customId?: string) => {
+    const userId = customId || `b-gen-${Math.random()}`
     
     const newProfile: MockProfile = {
       id: userId,
