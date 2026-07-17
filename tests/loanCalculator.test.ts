@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert'
-import { calculateLoan } from '../lib/loanCalculator'
+import { calculateLoan } from '../apps/web/lib/loanCalculator'
 
 test('Loan Repayment Calculator - 0% rate division', () => {
   const result = calculateLoan(12000, 0, 12)

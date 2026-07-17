@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert'
-import { createClient, createAdminClient } from '../lib/supabase/server'
+import { createClient, createAdminClient } from '../apps/web/lib/supabase/server'
 
 // Save original environment variables
 const originalNodeEnv = process.env.NODE_ENV

@@ -1,0 +1,11 @@
+{
+  "minSSMAgeMonths": 12,
+  "requiredDocTypes": [
+    "ssm_cert",
+    "business_plan"
+  ],
+  "ssmActiveOnly": true,
+  "bumiputeraOnly": true,
+  "minOwnerAge": 18,
+  "maxOwnerAge": 65
+}
