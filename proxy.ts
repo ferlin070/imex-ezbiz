@@ -59,6 +59,7 @@ export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone()
   const isAuthPage = url.pathname === '/login'
   const isMaraAuthPage = url.pathname === '/mara/login'
+  const isChangePasswordPage = url.pathname === '/change-password'
   const isJudgePage = url.pathname.startsWith('/vote') || url.pathname.startsWith('/ranking')
   const isDashboardPage = url.pathname.startsWith('/project')
   const isAdminPage = url.pathname.startsWith('/admin')
@@ -70,6 +71,19 @@ export async function proxy(request: NextRequest) {
   // Allow access to public resources and API routes without interception
   if (url.pathname.startsWith('/api') || url.pathname === '/') {
     return response
+  }
+
+  // Check if password change is forced
+  const mustChangePassword = user?.user_metadata?.must_change_password === true
+
+  if (mustChangePassword && !isChangePasswordPage) {
+    url.pathname = '/change-password'
+    return NextResponse.redirect(url)
+  }
+
+  if (user && isChangePasswordPage && !mustChangePassword) {
+    url.pathname = '/'
+    return NextResponse.redirect(url)
   }
 
   // Guard MARA pages: only allow mara_officer or admin

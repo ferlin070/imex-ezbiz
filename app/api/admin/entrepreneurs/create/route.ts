@@ -8,6 +8,15 @@ const entrepreneurSchema = z.object({
   projectId: z.string().nullable(),
 })
 
+function generateRandomPassword(length = 10): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$'
+  let password = ''
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return password
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
@@ -60,12 +69,14 @@ export async function POST(request: Request) {
     }
 
     const supabaseAdmin = createAdminClient()
+    const tempPassword = generateRandomPassword()
 
     // 2. Create auth user (Admin API)
     const { data: authData, error: authCreateError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password: 'password123',
+      password: tempPassword,
       email_confirm: true,
+      user_metadata: { must_change_password: true }
     })
 
     if (authCreateError || !authData?.user) {
@@ -114,7 +125,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, profile: newProfile })
+    return NextResponse.json({ success: true, profile: newProfile, tempPassword })
   } catch (err: any) {
     console.error('Create entrepreneur exception:', err)
     return NextResponse.json({ error: 'Ralat pelayan dalaman.' }, { status: 500 })

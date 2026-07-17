@@ -129,14 +129,20 @@ export function createMockSupabaseClient(userId: string | null) {
               if (table === 'projects') {
                 insertData = mockDb.insertProject(this._insertPayload)
               } else if (table === 'judges') {
-                const { judge } = mockDb.insertJudge(this._insertPayload.name, this._insertPayload.panel_label, this._insertPayload.email)
+                const { judge } = mockDb.insertJudge(
+                  this._insertPayload.name,
+                  this._insertPayload.panel_label,
+                  this._insertPayload.email,
+                  this._insertPayload.event_id,
+                  this._insertPayload.user_id
+                )
                 insertData = judge
               } else if (table === 'profiles') {
-                insertData = mockDb.insertEntrepreneur(
+                insertData = mockDb.insertProfile(
+                  this._insertPayload.id,
                   this._insertPayload.name,
                   this._insertPayload.email,
-                  this._insertPayload.project_id || null,
-                  this._insertPayload.id
+                  this._insertPayload.role
                 )
               } else if (table === 'mara_access_log') {
                 insertData = mockDb.insertAccessLog(this._insertPayload.officer_id, this._insertPayload.project_id)

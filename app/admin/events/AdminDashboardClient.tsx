@@ -240,6 +240,7 @@ export default function AdminDashboardClient({
           name: judgeName,
           panelLabel: judgePanel,
           email: judgeEmail,
+          eventId: event.id,
         })
       })
 
@@ -248,7 +249,7 @@ export default function AdminDashboardClient({
 
       setJudgeName('')
       setJudgeEmail('')
-      setSuccessMsg(`Panel Juri "${data.judge.name}" berjaya didaftarkan! (Akaun sedia log masuk)`)
+      setSuccessMsg(`Juri "${data.judge.name}" berjaya didaftarkan! Sila salin KATA LALUAN SEMENTARA ini: ${data.tempPassword} (Pengguna wajib menukar kata laluan pada log masuk pertama)`)
       router.refresh()
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal mendaftar juri.')
@@ -295,7 +296,7 @@ export default function AdminDashboardClient({
       setEntName('')
       setEntEmail('')
       setEntProjId('')
-      setSuccessMsg(`Profil usahawan "${data.profile.name}" berjaya didaftarkan! (Akaun sedia log masuk)`)
+      setSuccessMsg(`Usahawan "${data.profile.name}" berjaya didaftarkan! Sila salin KATA LALUAN SEMENTARA ini: ${data.tempPassword} (Pengguna wajib menukar kata laluan pada log masuk pertama)`)
       router.refresh()
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal mendaftar usahawan.')
@@ -787,7 +788,7 @@ export default function AdminDashboardClient({
                   </div>
 
                   <div className="p-2 bg-white/5 border border-white/5 rounded text-[10px] text-gray-400">
-                    💡 Kata laluan lalai untuk akaun juri baharu ialah <strong className="text-white">password123</strong>.
+                    💡 Kata laluan sementara rawak akan dijana secara automatik dan dipaparkan kepada anda selepas borang ini dihantar.
                   </div>
 
                   <button
@@ -907,7 +908,7 @@ export default function AdminDashboardClient({
                   </div>
 
                   <div className="p-2 bg-white/5 border border-white/5 rounded text-[10px] text-gray-400">
-                    💡 Kata laluan lalai untuk usahawan baharu ialah <strong className="text-white">password123</strong>.
+                    💡 Kata laluan sementara rawak akan dijana secara automatik dan dipaparkan kepada anda selepas borang ini dihantar.
                   </div>
 
                   <button

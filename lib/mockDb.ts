@@ -366,27 +366,31 @@ export const mockDb = {
     state.reports = state.reports.filter((r) => r.project_id !== id)
     return true
   },
-  insertJudge: (name: string, panelLabel: string, email: string) => {
-    const userId = `a-gen-${Math.random()}`
+  insertJudge: (name: string, panelLabel: string, email?: string, eventId?: string, userId?: string) => {
+    const finalUserId = userId || `a-gen-${Math.random()}`
     const judgeId = `j-gen-${Math.random()}`
     
-    const newProfile: MockProfile = {
-      id: userId,
-      email,
-      role: 'judge',
-      name
+    let profile = state.profiles.find(p => p.id === finalUserId)
+    if (!profile && email) {
+      profile = {
+        id: finalUserId,
+        email,
+        role: 'judge',
+        name
+      }
+      state.profiles.push(profile)
     }
+
     const newJudge: MockJudge = {
       id: judgeId,
-      event_id: mockEvent.id,
-      user_id: userId,
+      event_id: eventId || mockEvent.id,
+      user_id: finalUserId,
       panel_label: panelLabel,
       name
     }
 
-    state.profiles.push(newProfile)
     state.judges.push(newJudge)
-    return { profile: newProfile, judge: newJudge }
+    return { profile, judge: newJudge }
   },
   deleteJudge: (judgeId: string) => {
     const judge = state.judges.find((j) => j.id === judgeId)
@@ -396,6 +400,21 @@ export const mockDb = {
       state.scores = state.scores.filter((s) => s.judge_id !== judgeId)
     }
     return true
+  },
+  insertProfile: (id: string, name: string, email: string, role: string) => {
+    const newProfile: MockProfile = {
+      id,
+      email,
+      role,
+      name
+    }
+    const existingIdx = state.profiles.findIndex(p => p.id === id)
+    if (existingIdx > -1) {
+      state.profiles[existingIdx] = newProfile
+    } else {
+      state.profiles.push(newProfile)
+    }
+    return newProfile
   },
   insertEntrepreneur: (name: string, email: string, projectId: string | null, customId?: string) => {
     const userId = customId || `b-gen-${Math.random()}`
