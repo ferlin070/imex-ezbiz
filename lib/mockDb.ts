@@ -280,6 +280,9 @@ export const mockDb = {
   getCriteriaByEventId: (eventId: string) => {
     return mockCriteria.filter((c) => c.event_id === eventId)
   },
+  getProjects: () => {
+    return state.projects
+  },
   getProjectsByEventId: (eventId: string) => {
     return state.projects.filter((p) => p.event_id === eventId)
   },

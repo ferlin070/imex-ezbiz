@@ -41,8 +41,13 @@ export function createMockSupabaseClient(userId: string | null) {
         _insertPayload: null as any,
         _upsertPayload: null as any,
         _deleteFlag: false,
+        _orFilter: null as string | null,
 
         select(fields?: string) { return this },
+        or(val: string) {
+          this._orFilter = val
+          return this
+        },
         eq(col: string, val: any) {
           this._eq[col] = val
           return this
@@ -187,6 +192,12 @@ export function createMockSupabaseClient(userId: string | null) {
             // Get all projects for event (or default event)
             const eventId = this._eq['event_id'] || 'e1111111-1111-1111-1111-111111111111'
             let all = mockDb.getProjectsByEventId(eventId)
+
+            if (this._orFilter) {
+              if (this._orFilter.includes('mara_visible.eq.true') || this._orFilter.includes('entry_type.eq.direct')) {
+                all = (mockDb as any).getProjects().filter((p: any) => p.mara_visible === true || p.entry_type === 'direct')
+              }
+            }
 
             // Dynamically apply other filters from this._eq
             Object.keys(this._eq).forEach((key) => {
