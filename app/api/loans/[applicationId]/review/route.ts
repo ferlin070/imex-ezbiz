@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { calculateLoan } from '@/lib/loanCalculator'
@@ -75,7 +76,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         })
 
       if (scheduleError) {
-        console.error('Failed to update repayment schedule during approval:', scheduleError)
+        logger.error('Failed to update repayment schedule during approval:', scheduleError)
         return NextResponse.json({ error: 'Gagal mengemaskini jadual bayaran balik pembiayaan.' }, { status: 500 })
       }
     }
@@ -95,7 +96,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       .eq('id', applicationId)
 
     if (updateError) {
-      console.error('Failed to update loan application:', updateError)
+      logger.error('Failed to update loan application:', updateError)
       return NextResponse.json({ error: 'Gagal mengemaskini permohonan pinjaman.' }, { status: 500 })
     }
 
@@ -113,7 +114,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       .eq('id', application.project_id)
 
     if (projectError) {
-      console.warn('Gagal mengemaskini status projek:', projectError)
+      logger.warn('Gagal mengemaskini status projek:', projectError)
     }
 
     // 8. Log the access/review action
@@ -126,12 +127,12 @@ export async function POST(request: Request, { params }: RouteParams) {
       })
 
     if (logError) {
-      console.warn('Failed to log audit for loan application review:', logError)
+      logger.warn('Failed to log audit for loan application review:', logError)
     }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Review application API exception:', error)
+    logger.error('Review application API exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa memproses ulasan.' }, { status: 500 })
   }
 }

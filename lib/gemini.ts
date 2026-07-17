@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { AiReportSchema, AiReportInput } from '../schemas/ai-report.schema'
 import { getSystemPrompt } from './supabase/promptConfig'
@@ -96,12 +97,12 @@ Sila jana:
       return validatedData
     } catch (err: any) {
       if (attempt < 2) {
-        console.warn(`Panggilan Gemini gagal pada cubaan ${attempt}. Mencuba semula... Ralat:`, err.message)
+        logger.warn(`Panggilan Gemini gagal pada cubaan ${attempt}. Mencuba semula... Ralat:`, err.message)
         return runGeneration(attempt + 1)
       }
       
       // Attempt 2 failed: Fall back to simulated report
-      console.warn("Gemini API key missing/invalid. Falling back to simulated MARA TVET business report generation...")
+      logger.warn("Gemini API key missing/invalid. Falling back to simulated MARA TVET business report generation...")
       return {
         swot: {
           strengths: [

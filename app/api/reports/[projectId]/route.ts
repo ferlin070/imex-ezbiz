@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
@@ -64,7 +65,7 @@ export async function GET(request: Request, context: RouteContext) {
       .maybeSingle()
 
     if (reportError) {
-      console.error('Fetch report cache error:', reportError)
+      logger.error('Fetch report cache error:', reportError)
       return NextResponse.json({ error: 'Ralat pangkalan data semasa mengambil laporan.' }, { status: 500 })
     }
 
@@ -74,7 +75,7 @@ export async function GET(request: Request, context: RouteContext) {
 
     return NextResponse.json({ found: true, report })
   } catch (error) {
-    console.error('Get Report Cache exception:', error)
+    logger.error('Get Report Cache exception:', error)
     return NextResponse.json({ error: 'Ralat server dalaman.' }, { status: 500 })
   }
 }

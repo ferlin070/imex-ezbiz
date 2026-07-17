@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { createAdminClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     })
 
     if (authCreateError || !authData?.user) {
-      console.error('Auth user creation error for judge:', authCreateError)
+      logger.error('Auth user creation error for judge:', authCreateError)
       const msg = authCreateError?.message?.toLowerCase().includes('already')
         ? 'E-mel ini sudah berdaftar dengan akaun lain.'
         : 'Gagal mencipta akaun juri.'
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
       })
 
     if (profileError) {
-      console.error('Create judge profile error:', profileError)
+      logger.error('Create judge profile error:', profileError)
       return NextResponse.json({
         error: 'Akaun dicipta tetapi profil juri gagal disimpan. Sila hubungi pembangun.',
         userId: newUserId
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError) {
-      console.error('Create judge record error:', insertError)
+      logger.error('Create judge record error:', insertError)
       return NextResponse.json({
         error: 'Akaun dicipta tetapi profil juri gagal dipautkan. Sila kaitkan secara manual.',
         userId: newUserId
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, judge: newJudge, tempPassword })
   } catch (err: any) {
-    console.error('Create judge exception:', err)
+    logger.error('Create judge exception:', err)
     return NextResponse.json({ error: 'Ralat pelayan dalaman.' }, { status: 500 })
   }
 }

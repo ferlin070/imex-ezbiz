@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       .or('mara_visible.eq.true,entry_type.eq.direct')
 
     if (projectsError) {
-      console.error('Fetch projects error:', projectsError)
+      logger.error('Fetch projects error:', projectsError)
       return NextResponse.json({ error: 'Gagal menarik data projek.' }, { status: 500 })
     }
 
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, projects: results })
   } catch (error: any) {
-    console.error('Search API exception:', error)
+    logger.error('Search API exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa memproses carian.' }, { status: 500 })
   }
 }

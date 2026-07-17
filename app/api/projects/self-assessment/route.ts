@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { calculateSelfAssessment } from '@/lib/selfAssessment'
@@ -64,13 +65,13 @@ export async function POST(request: Request) {
       })
 
     if (saveError) {
-      console.error('Save self-assessment error:', saveError)
+      logger.error('Save self-assessment error:', saveError)
       return NextResponse.json({ error: 'Gagal menyimpan rekod penilaian kendiri.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, score: result.score, tier: result.tier })
   } catch (error: any) {
-    console.error('Self Assessment API exception:', error)
+    logger.error('Self Assessment API exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa memproses penilaian.' }, { status: 500 })
   }
 }

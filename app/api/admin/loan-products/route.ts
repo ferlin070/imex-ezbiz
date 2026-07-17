@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, products })
   } catch (error: any) {
-    console.error('Loan products GET exception:', error)
+    logger.error('Loan products GET exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa mengambil skim pinjaman.' }, { status: 500 })
   }
 }
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, product: saved })
   } catch (error: any) {
-    console.error('Loan products POST exception:', error)
+    logger.error('Loan products POST exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa mendaftar skim pinjaman.' }, { status: 500 })
   }
 }
@@ -114,7 +115,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ success: true, product: updated })
   } catch (error: any) {
-    console.error('Loan products PUT exception:', error)
+    logger.error('Loan products PUT exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa mengemaskini skim pinjaman.' }, { status: 500 })
   }
 }
@@ -142,7 +143,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Loan products DELETE exception:', error)
+    logger.error('Loan products DELETE exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa memadam skim pinjaman.' }, { status: 500 })
   }
 }

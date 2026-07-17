@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { GrantMatchListSchema, GrantMatchItem } from '../schemas/grant-match.schema'
 
@@ -66,7 +67,7 @@ Sila padankan projek usahawan ini dengan setiap skim pembiayaan di atas. Sediaka
       const validated = GrantMatchListSchema.parse(parsed)
       return validated
     } catch (err) {
-      console.warn('Gemini AI grant match generation failed, falling back to heuristic calculation:', err)
+      logger.warn('Gemini AI grant match generation failed, falling back to heuristic calculation:', err)
     }
   }
 

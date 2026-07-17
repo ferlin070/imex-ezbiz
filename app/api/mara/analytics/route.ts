@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { calculateFeasibility } from '@/lib/feasibility'
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
       .or('mara_visible.eq.true,entry_type.eq.direct')
 
     if (projectsError) {
-      console.error('Fetch analytics projects error:', projectsError)
+      logger.error('Fetch analytics projects error:', projectsError)
       return NextResponse.json({ error: 'Gagal menarik data projek.' }, { status: 500 })
     }
 
@@ -163,7 +164,7 @@ export async function GET(request: Request) {
       },
     })
   } catch (error: any) {
-    console.error('Analytics GET API exception:', error)
+    logger.error('Analytics GET API exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa memproses analitis.' }, { status: 500 })
   }
 }

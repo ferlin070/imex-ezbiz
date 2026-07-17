@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
       .single()
 
     if (appError || !application) {
-      console.error('Insert loan application error:', appError)
+      logger.error('Insert loan application error:', appError)
       return NextResponse.json({ error: 'Gagal membuat permohonan pembiayaan.' }, { status: 500 })
     }
 
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
       })
 
     if (scheduleError) {
-      console.error('Insert schedule error, rolling back application:', scheduleError)
+      logger.error('Insert schedule error, rolling back application:', scheduleError)
       await supabase.from('loan_applications').delete().eq('id', createdApplicationId)
       return NextResponse.json({ error: 'Gagal menjana jadual bayaran balik.' }, { status: 500 })
     }
@@ -112,12 +113,12 @@ export async function POST(request: Request) {
       .eq('id', projectId)
 
     if (projectUpdateError) {
-      console.warn('Gagal menaik taraf status projek kepada under_review:', projectUpdateError)
+      logger.warn('Gagal menaik taraf status projek kepada under_review:', projectUpdateError)
     }
 
     return NextResponse.json({ success: true, applicationId: createdApplicationId })
   } catch (error: any) {
-    console.error('Loan apply API exception:', error)
+    logger.error('Loan apply API exception:', error)
     if (createdApplicationId && supabaseClient) {
       await supabaseClient.from('loan_applications').delete().eq('id', createdApplicationId)
     }

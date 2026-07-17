@@ -1,7 +1,49 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
+// Simple memory-based rate limiter store (sliding window)
+const ipCache = new Map<string, number[]>()
+const LIMIT = 100 // max requests
+const WINDOW_MS = 15 * 60 * 1000 // 15 minutes
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now()
+  const timestamps = ipCache.get(ip) || []
+  
+  // Filter timestamps within current sliding window
+  const activeTimestamps = timestamps.filter(t => now - t < WINDOW_MS)
+  
+  if (activeTimestamps.length >= LIMIT) {
+    return true
+  }
+  
+  activeTimestamps.push(now)
+  ipCache.set(ip, activeTimestamps)
+  return false
+}
+
 export async function proxy(request: NextRequest) {
+  const url = request.nextUrl.clone()
+
+  // API Rate Limiting Check
+  if (url.pathname.startsWith('/api')) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
+               request.headers.get('x-real-ip') || 
+               '127.0.0.1'
+    if (isRateLimited(ip)) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Terlalu banyak permintaan. Sila cuba lagi selepas 15 minit.' }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(WINDOW_MS / 1000)
+          }
+        }
+      )
+    }
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -46,9 +88,13 @@ export async function proxy(request: NextRequest) {
     } catch (err) {
       console.warn('Real Supabase auth query failed inside proxy, ignoring:', err)
     }
+  } else {
+    const mockSession = request.cookies.get('imex_mock_session')?.value
+    if (mockSession) {
+      user = { id: mockSession } as any
+    }
   }
 
-  const url = request.nextUrl.clone()
   const isChangePasswordPage = url.pathname === '/change-password'
   const isJudgePage = url.pathname.startsWith('/vote') || url.pathname.startsWith('/ranking')
   const isDashboardPage = url.pathname.startsWith('/project')

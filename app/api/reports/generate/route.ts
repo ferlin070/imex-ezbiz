@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { calculateFeasibility } from '@/lib/feasibility'
@@ -129,13 +130,13 @@ export async function POST(request: Request) {
       .single()
 
     if (upsertError) {
-      console.error('Upsert report error:', upsertError)
+      logger.error('Upsert report error:', upsertError)
       return NextResponse.json({ error: 'Gagal menyimpan laporan AI.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, report: savedReport })
   } catch (error: any) {
-    console.error('Generate Report exception:', error)
+    logger.error('Generate Report exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa menjana laporan.' }, { status: 500 })
   }
 }

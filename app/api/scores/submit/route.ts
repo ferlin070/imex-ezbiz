@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -53,13 +54,13 @@ export async function POST(request: Request) {
       })
 
     if (upsertError) {
-      console.error('Upsert score error:', upsertError)
+      logger.error('Upsert score error:', upsertError)
       return NextResponse.json({ error: 'Gagal menyimpan markah ke pangkalan data.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, message: 'Markah berjaya dihantar!' })
   } catch (error) {
-    console.error('Submit API exception:', error)
+    logger.error('Submit API exception:', error)
     return NextResponse.json({ error: 'Ralat server dalaman.' }, { status: 500 })
   }
 }

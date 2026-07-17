@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { businessProfileSchema } from '@/schemas/business-profile.schema'
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
       .single()
 
     if (projectError || !project) {
-      console.error('Insert project error:', projectError)
+      logger.error('Insert project error:', projectError)
       return NextResponse.json({ error: 'Gagal mendaftar projek baru.' }, { status: 500 })
     }
 
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
       })
 
     if (profileError) {
-      console.error('Insert business_profiles error, rolling back project:', profileError)
+      logger.error('Insert business_profiles error, rolling back project:', profileError)
       // Rollback inserted project
       await supabase.from('projects').delete().eq('id', createdProjectId)
       return NextResponse.json({ error: 'Gagal mendaftar profil perniagaan usahawan.' }, { status: 500 })
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
         .insert(documentRecords)
 
       if (docsError) {
-        console.error('Insert business_documents error, rolling back project & profile:', docsError)
+        logger.error('Insert business_documents error, rolling back project & profile:', docsError)
         // Rollback all
         await supabase.from('projects').delete().eq('id', createdProjectId)
         return NextResponse.json({ error: 'Gagal menyimpan rekod dokumen perniagaan.' }, { status: 500 })
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, projectId: createdProjectId })
   } catch (error: any) {
-    console.error('Register Direct API exception:', error)
+    logger.error('Register Direct API exception:', error)
     if (createdProjectId) {
       // Rollback fallback
       await supabase.from('projects').delete().eq('id', createdProjectId)

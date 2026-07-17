@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { createAdminClient } from '@/lib/supabase/server'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
     })
 
     if (authCreateError || !authData?.user) {
-      console.error('Auth user creation error:', authCreateError)
+      logger.error('Auth user creation error:', authCreateError)
       const msg = authCreateError?.message?.toLowerCase().includes('already')
         ? 'E-mel ini sudah berdaftar dengan akaun lain.'
         : 'Gagal mencipta akaun usahawan.'
@@ -88,7 +89,7 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError) {
-      console.error('Create entrepreneur profile error:', insertError)
+      logger.error('Create entrepreneur profile error:', insertError)
       return NextResponse.json({
         error: 'Akaun dicipta tetapi profil usahawan gagal disimpan. Sila hubungi pembangun.',
         userId: newUserId
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
         .eq('id', projectId)
 
       if (linkError) {
-        console.error('Project link error:', linkError)
+        logger.error('Project link error:', linkError)
         return NextResponse.json({
           error: 'Akaun dicipta tetapi gagal dikaitkan dengan projek. Sila kaitkan secara manual.',
           userId: newUserId
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, profile: newProfile, tempPassword })
   } catch (err: any) {
-    console.error('Create entrepreneur exception:', err)
+    logger.error('Create entrepreneur exception:', err)
     return NextResponse.json({ error: 'Ralat pelayan dalaman.' }, { status: 500 })
   }
 }

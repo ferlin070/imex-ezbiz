@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -65,13 +66,13 @@ export async function POST(request: Request) {
       } as any)
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError)
+      logger.error({ err: uploadError }, 'Storage upload error')
       return NextResponse.json({ error: 'Gagal memuat naik fail ke storan.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, storage_path: uploadData.path })
   } catch (error: any) {
-    console.error('Upload API exception:', error)
+    logger.error({ err: error }, 'Upload API exception')
     return NextResponse.json({ error: error.message || 'Ralat server semasa muat naik.' }, { status: 500 })
   }
 }

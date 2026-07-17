@@ -1,0 +1,171 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "IMEX EzBiz API Documentation",
+    "description": "Dokumentasi API lengkap untuk sistem IMEX EzBiz (Next.js / Supabase / Gemini AI). Platform bersepadu penjanaan rancangan perniagaan pintar usahawan i-MARATeCH.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Server pembangunan lokal"
+    }
+  ],
+  "paths": {
+    "/api/documents/upload": {
+      "post": {
+        "summary": "Muat naik dokumen perniagaan",
+        "description": "Membolehkan usahawan memuat naik lampiran dokumen perniagaan (Format PDF, JPEG, PNG, DOCX dengan had maksimum 10MB) ke storan.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Fail dokumen yang ingin dimuat naik"
+                  }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Muat naik berjaya",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "storage_path": { "type": "string", "example": "userId/12345-filename.pdf" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Format fail tidak sah atau tiada fail dihantar"
+          },
+          "413": {
+            "description": "Saiz fail melebihi had 10MB"
+          },
+          "500": {
+            "description": "Ralat dalaman storan"
+          }
+        }
+      }
+    },
+    "/api/loans/apply": {
+      "post": {
+        "summary": "Hantar permohonan pembiayaan pinjaman MARA",
+        "description": "Menyimpan permohonan pinjaman usahawan dan menjana jadual jadual pembayaran balik automatik.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": { "type": "string", "format": "uuid", "example": "d1111111-1111-1111-1111-111111111111" },
+                  "loanProductId": { "type": "string", "format": "uuid", "example": "p1111111-1111-1111-1111-111111111111" },
+                  "requestedAmountMyr": { "type": "number", "example": 50000 },
+                  "requestedTenureMonths": { "type": "integer", "example": 24 },
+                  "purpose": { "type": "string", "example": "Membeli peralatan pengeringan hibrid solar." }
+                },
+                "required": ["projectId", "loanProductId", "requestedAmountMyr", "requestedTenureMonths", "purpose"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Permohonan berjaya dihantar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "applicationId": { "type": "string", "format": "uuid", "example": "a1111111-1111-1111-1111-111111111111" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ralat validasi payload"
+          },
+          "500": {
+            "description": "Gagal menyimpan permohonan atau menjana jadual"
+          }
+        }
+      }
+    },
+    "/api/mara/search": {
+      "get": {
+        "summary": "Carian & padanan geran projek usahawan",
+        "description": "Konsol carian pegawai MARA untuk menyaring senarai projek mengikut hasil inovasi, kategori, dan hasil penilaian kebolehsanaan.",
+        "parameters": [
+          { "name": "query", "in": "query", "schema": { "type": "string" }, "required": false },
+          { "name": "category", "in": "query", "schema": { "type": "string" }, "required": false }
+        ],
+        "responses": {
+          "200": {
+            "description": "Senarai projek diperoleh"
+          }
+        }
+      }
+    },
+    "/api/mara/analytics": {
+      "get": {
+        "summary": "Analisis demografi dan pembiayaan",
+        "description": "Memperoleh statistik agregat berkenaan prestasi permohonan pinjaman dan taburan geran.",
+        "responses": {
+          "200": {
+            "description": "Statistik analisis diperoleh"
+          }
+        }
+      }
+    },
+    "/api/scores/submit": {
+      "post": {
+        "summary": "Hantar markah penilaian juri",
+        "description": "Mendaftar markah kriteria inovasi usahawan oleh panel juri.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": { "type": "string", "format": "uuid" },
+                  "scores": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "criteriaId": { "type": "string", "format": "uuid" },
+                        "score": { "type": "number", "minimum": 0 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Markah berjaya disimpan"
+          }
+        }
+      }
+    }
+  }
+}

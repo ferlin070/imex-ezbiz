@@ -5,10 +5,27 @@ export function createMockSupabaseClient(userId: string | null) {
   const clientObj = {
     auth: {
       async getUser() {
-        if (!userId) return { data: { user: null }, error: null }
-        const profile = mockDb.getProfileById(userId)
+        let currentUserId = userId
+        if (!currentUserId && typeof document !== 'undefined') {
+          const match = document.cookie.match(/imex_mock_session=([^;]+)/)
+          if (match) {
+            currentUserId = match[1]
+          }
+        }
+        if (!currentUserId) return { data: { user: null }, error: null }
+        const profile = mockDb.getProfileById(currentUserId)
         if (!profile) return { data: { user: null }, error: null }
-        return { data: { user: { id: userId, email: profile.email } }, error: null }
+        return { data: { user: { id: currentUserId, email: profile.email } }, error: null }
+      },
+      async signInWithPassword({ email }: any) {
+        const profile = mockDb.getProfiles().find(p => p.email.toLowerCase() === email.toLowerCase())
+        if (!profile) {
+          return { data: { user: null }, error: { message: 'E-mel atau kata laluan salah.' } }
+        }
+        if (typeof document !== 'undefined') {
+          document.cookie = `imex_mock_session=${profile.id}; path=/; max-age=3600`
+        }
+        return { data: { user: { id: profile.id, email: profile.email } }, error: null }
       },
       async signOut() {
         if (typeof document !== 'undefined') {

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     if (appError) {
-      console.error('Fetch loan applications error:', appError)
+      logger.error('Fetch loan applications error:', appError)
       return NextResponse.json({ error: 'Gagal menarik data permohonan pinjaman.' }, { status: 500 })
     }
 
@@ -92,7 +93,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, applications: enriched })
   } catch (error: any) {
-    console.error('Inbox GET API exception:', error)
+    logger.error('Inbox GET API exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat pelayan semasa menarik permohonan.' }, { status: 500 })
   }
 }

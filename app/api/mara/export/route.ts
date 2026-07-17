@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { calculateFeasibility } from '@/lib/feasibility'
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
       .eq('officer_id', user.id)
 
     if (shortlistError) {
-      console.error('Export shortlist error:', shortlistError)
+      logger.error('Export shortlist error:', shortlistError)
       return new Response('Gagal menarik data senarai pendek.', { status: 500 })
     }
 
@@ -172,7 +173,7 @@ export async function GET(request: Request) {
       },
     })
   } catch (error: any) {
-    console.error('Export GET API exception:', error)
+    logger.error('Export GET API exception:', error)
     return new Response('Ralat semasa mengeksport senarai pendek.', { status: 500 })
   }
 }

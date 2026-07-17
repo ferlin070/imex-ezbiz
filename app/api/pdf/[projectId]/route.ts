@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { renderToStream } from '@react-pdf/renderer'
@@ -103,7 +104,7 @@ export async function GET(request: Request, context: RouteContext) {
       },
     })
   } catch (error: any) {
-    console.error('PDF API route exception:', error)
+    logger.error('PDF API route exception:', error)
     return NextResponse.json({ error: 'Gagal menjana dokumen PDF.' }, { status: 500 })
   }
 }

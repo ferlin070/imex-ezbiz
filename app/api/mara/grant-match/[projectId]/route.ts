@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { calculateFeasibility } from '@/lib/feasibility'
@@ -22,7 +23,7 @@ export async function POST(
       })
 
     if (logError) {
-      console.warn('Gagal merekod log audit akses pegawai MARA:', logError)
+      logger.warn('Gagal merekod log audit akses pegawai MARA:', logError)
     }
 
     // 4. Fetch project metadata
@@ -88,7 +89,7 @@ export async function POST(
         })
 
       if (upsertError) {
-        console.error(`Gagal menyimpan padanan geran untuk scheme_id ${match.scheme_id}:`, upsertError)
+        logger.error(`Gagal menyimpan padanan geran untuk scheme_id ${match.scheme_id}:`, upsertError)
       }
     }
 
@@ -115,7 +116,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, matches: enrichedMatches })
   } catch (error: any) {
-    console.error('Grant matching engine route exception:', error)
+    logger.error('Grant matching engine route exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat semasa memproses padanan geran.' }, { status: 500 })
   }
 }

@@ -12,7 +12,12 @@ export async function createClient() {
 
   if (isDummy || mockSessionVal) {
     let userId = null
-    if (mockSessionVal) {
+    try {
+      const cookieStore = await cookies()
+      userId = cookieStore.get('imex_mock_session')?.value || null
+    } catch {}
+
+    if (!userId && mockSessionVal) {
       try {
         const parsed = JSON.parse(mockSessionVal)
         userId = parsed.id

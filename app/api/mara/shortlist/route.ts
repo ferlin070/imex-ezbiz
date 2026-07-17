@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
       .eq('officer_id', user.id)
 
     if (shortlistError) {
-      console.error('Fetch shortlist error:', shortlistError)
+      logger.error('Fetch shortlist error:', shortlistError)
       return NextResponse.json({ error: 'Gagal menarik data senarai pendek.' }, { status: 500 })
     }
 
@@ -86,7 +87,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, shortlist: enriched })
   } catch (error: any) {
-    console.error('Shortlist GET API exception:', error)
+    logger.error('Shortlist GET API exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa menarik senarai pendek.' }, { status: 500 })
   }
 }
@@ -118,13 +119,13 @@ export async function POST(request: Request) {
       })
 
     if (upsertError) {
-      console.error('Upsert shortlist error:', upsertError)
+      logger.error('Upsert shortlist error:', upsertError)
       return NextResponse.json({ error: 'Gagal mengemaskini senarai pendek di pangkalan data.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, shortlist: saved })
   } catch (error: any) {
-    console.error('Shortlist POST API exception:', error)
+    logger.error('Shortlist POST API exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa mengemaskini senarai pendek.' }, { status: 500 })
   }
 }

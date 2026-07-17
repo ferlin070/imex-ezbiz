@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -58,13 +59,13 @@ export async function POST(request: Request) {
       .eq('id', projectId)
 
     if (updateError) {
-      console.error('Update consent error:', updateError)
+      logger.error('Update consent error:', updateError)
       return NextResponse.json({ error: 'Gagal mengemas kini kebenaran di pangkalan data.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, maraVisible })
   } catch (error: any) {
-    console.error('Consent API exception:', error)
+    logger.error('Consent API exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa mengemas kini kebenaran.' }, { status: 500 })
   }
 }

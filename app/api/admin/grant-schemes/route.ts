@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
@@ -25,13 +26,13 @@ export async function GET(request: Request) {
       .select('*')
 
     if (error) {
-      console.error('Fetch grant schemes error:', error)
+      logger.error('Fetch grant schemes error:', error)
       return NextResponse.json({ error: 'Gagal menarik data skim geran.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, schemes: schemes || [] })
   } catch (error: any) {
-    console.error('Grant schemes GET exception:', error)
+    logger.error('Grant schemes GET exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa menarik skim geran.' }, { status: 500 })
   }
 }
@@ -63,13 +64,13 @@ export async function POST(request: Request) {
       })
 
     if (insertError) {
-      console.error('Insert grant scheme error:', insertError)
+      logger.error('Insert grant scheme error:', insertError)
       return NextResponse.json({ error: 'Gagal menyimpan skim geran baharu.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, scheme: saved })
   } catch (error: any) {
-    console.error('Grant schemes POST exception:', error)
+    logger.error('Grant schemes POST exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa menambah skim geran.' }, { status: 500 })
   }
 }
@@ -102,13 +103,13 @@ export async function PUT(request: Request) {
       .eq('id', parsed.data.id)
 
     if (updateError) {
-      console.error('Update grant scheme error:', updateError)
+      logger.error('Update grant scheme error:', updateError)
       return NextResponse.json({ error: 'Gagal mengemaskini skim geran.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, scheme: saved })
   } catch (error: any) {
-    console.error('Grant schemes PUT exception:', error)
+    logger.error('Grant schemes PUT exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa mengemaskini skim geran.' }, { status: 500 })
   }
 }
@@ -134,13 +135,13 @@ export async function DELETE(request: Request) {
       .eq('id', id)
 
     if (deleteError) {
-      console.error('Delete grant scheme error:', deleteError)
+      logger.error('Delete grant scheme error:', deleteError)
       return NextResponse.json({ error: 'Gagal memadam skim geran.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error('Grant schemes DELETE exception:', error)
+    logger.error('Grant schemes DELETE exception:', error)
     return NextResponse.json({ error: error.message || 'Ralat server semasa memadam skim geran.' }, { status: 500 })
   }
 }
