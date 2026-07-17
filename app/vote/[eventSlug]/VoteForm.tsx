@@ -153,6 +153,7 @@ export default function VoteForm({ event, judge, criteria, projects, initialScor
   }
 
   const handleLogout = async () => {
+    document.cookie = 'imex_mock_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
     await supabase.auth.signOut()
     router.push('/login')
   }
