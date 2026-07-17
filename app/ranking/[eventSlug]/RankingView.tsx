@@ -29,7 +29,7 @@ interface ScoreEntry {
 }
 
 interface RankingViewProps {
-  event: { id: string; name: string; slug: string }
+  event: { id: string; name: string; slug: string; event_type?: string }
   criteria: Criterion[]
   projects: Project[]
   initialScores: ScoreEntry[]
@@ -181,7 +181,7 @@ export default function RankingView({
           <BarChart3 className="w-5 h-5 text-teal-neon" />
           <div>
             <h1 className="text-sm font-bold tracking-tight bg-gradient-to-r from-teal-neon to-cyan-neon bg-clip-text text-transparent">
-              Keputusan Live Inovasi
+              {event.event_type === 'mara_program' ? 'Keputusan Penilaian MARA' : 'Keputusan Live Inovasi'}
             </h1>
             <p className="text-[10px] text-gray-400 font-semibold uppercase">{event.name}</p>
           </div>
@@ -216,7 +216,7 @@ export default function RankingView({
               onClick={() => router.push('/login')}
               className="bg-gradient-to-r from-teal-neon to-cyan-neon text-navy-950 px-4 py-1.5 rounded-lg text-xs font-extrabold shadow-[0_0_10px_rgba(0,242,254,0.3)] transition-all cursor-pointer"
             >
-              Log Masuk Juri
+              {event.event_type === 'mara_program' ? 'Log Masuk Penilai' : 'Log Masuk Juri'}
             </button>
           )}
         </div>
@@ -258,7 +258,7 @@ export default function RankingView({
             <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-ping shrink-0" />
             <span>Kemas kini secara masa nyata aktif</span>
           </div>
-          <span>Total Juri Berdaftar: {totalJudges} orang</span>
+          <span>{event.event_type === 'mara_program' ? 'Total Penilai Berdaftar' : 'Total Juri Berdaftar'}: {totalJudges} orang</span>
         </div>
 
         {/* Rankings List */}
@@ -293,7 +293,7 @@ export default function RankingView({
                       {/* Voted Panel Count */}
                       <div className="flex items-center gap-1 text-[9px] text-gray-400 mt-1 font-bold">
                         <Users className="w-3 h-3 text-gray-500" />
-                        <span>{item.votingJudgesCount} / {totalJudges} Panel Menilai</span>
+                        <span>{item.votingJudgesCount} / {totalJudges} {event.event_type === 'mara_program' ? 'Penilai Mengundi' : 'Juri Menilai'}</span>
                       </div>
                     </div>
                   </div>

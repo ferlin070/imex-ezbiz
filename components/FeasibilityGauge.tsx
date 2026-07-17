@@ -1,11 +1,14 @@
 'use client'
 
+import SelfDeclaredBadge from './SelfDeclaredBadge'
+
 interface FeasibilityGaugeProps {
   score: number
   tier: 'Sangat Berpotensi' | 'Layak Komersial' | 'Berpotensi Sederhana' | 'Perlu Bimbingan'
+  scoreSource?: string
 }
 
-export default function FeasibilityGauge({ score, tier }: FeasibilityGaugeProps) {
+export default function FeasibilityGauge({ score, tier, scoreSource }: FeasibilityGaugeProps) {
   // Map score (0-100) to rotation angle for the needle (-90deg to 90deg)
   const angle = (score / 100) * 180 - 90
 
@@ -63,15 +66,20 @@ export default function FeasibilityGauge({ score, tier }: FeasibilityGaugeProps)
       </div>
 
       {/* Score Text */}
-      <div className="text-center z-10 mt-2">
+      <div className="text-center z-10 mt-2 flex flex-col items-center">
         <div className="flex items-baseline justify-center">
           <span className={`text-4xl font-black ${theme.text}`}>{score}</span>
           <span className="text-xs text-gray-500 font-bold ml-1">%</span>
         </div>
         <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-1">Indeks Kebolehsanaan</p>
-        <span className={`inline-block text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border mt-2 tracking-widest ${theme.border} ${theme.text}`}>
-          {tier}
-        </span>
+        <div className="flex flex-col items-center gap-1.5 mt-2">
+          <span className={`inline-block text-[10px] font-extrabold uppercase px-3 py-1 rounded-full border tracking-widest ${theme.border} ${theme.text}`}>
+            {tier}
+          </span>
+          {scoreSource === 'self_declared' && (
+            <SelfDeclaredBadge />
+          )}
+        </div>
       </div>
     </div>
   )

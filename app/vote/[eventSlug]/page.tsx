@@ -32,7 +32,7 @@ export default async function VotePage({ params }: PageProps) {
   // Get event details
   const { data: event, error: eventError } = await supabase
     .from('events')
-    .select('id, name, slug')
+    .select('id, name, slug, event_type')
     .eq('slug', eventSlug)
     .limit(1)
     .maybeSingle()

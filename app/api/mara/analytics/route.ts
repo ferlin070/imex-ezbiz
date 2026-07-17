@@ -23,11 +23,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Akses dinafikan. Anda bukan pegawai MARA yang sah.' }, { status: 403 })
     }
 
-    // 3. Fetch all projects that are visible to MARA (mara_visible = true)
+    // 3. Fetch all projects that are visible to MARA (mara_visible = true OR entry_type = 'direct')
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('id, title, category, state, institution, event_id')
-      .eq('mara_visible', true)
+      .select('id, title, category, state, institution, event_id, entry_type, score_source')
+      .or('mara_visible.eq.true,entry_type.eq.direct')
 
     if (projectsError) {
       console.error('Fetch analytics projects error:', projectsError)
@@ -58,6 +58,14 @@ export async function GET(request: Request) {
       .in('project_id', projectIds)
 
     const reportsMap = new Map<string, any>((reports || []).map((r: any) => [r.project_id, r]))
+
+    // Fetch all self_assessments for direct projects
+    const { data: selfAssessments } = await supabase
+      .from('self_assessments')
+      .select('project_id, computed_score')
+      .in('project_id', projectIds)
+
+    const selfAssessmentsMap = new Map<string, number>((selfAssessments || []).map((sa: any) => [sa.project_id, Number(sa.computed_score)]))
 
     // 5. Fetch all scores & criteria for fallback score calculation
     const { data: allScores } = await supabase
@@ -108,12 +116,20 @@ export async function GET(request: Request) {
 
       // Fallback calculation if no AI report exists yet
       if (!report) {
-        const projScores = scoresByProject.get(p.id) || []
-        const eventCriteria = criteriaByEvent.get(p.event_id) || []
-        if (projScores.length > 0) {
-          const calc = calculateFeasibility(projScores, eventCriteria)
-          score = calc.score
-          tier = calc.tier as any
+        if (p.entry_type === 'direct') {
+          score = selfAssessmentsMap.get(p.id) || 0
+          if (score >= 80) tier = 'Sangat Berpotensi'
+          else if (score >= 60) tier = 'Layak Komersial'
+          else if (score >= 40) tier = 'Berpotensi Sederhana'
+          else tier = 'Perlu Bimbingan'
+        } else {
+          const projScores = scoresByProject.get(p.id) || []
+          const eventCriteria = criteriaByEvent.get(p.event_id) || []
+          if (projScores.length > 0) {
+            const calc = calculateFeasibility(projScores, eventCriteria)
+            score = calc.score
+            tier = calc.tier as any
+          }
         }
       }
 
@@ -136,6 +152,7 @@ export async function GET(request: Request) {
         institution: p.institution || 'Tidak Dinyatakan',
         score,
         tier,
+        score_source: p.score_source,
       })
     })
 

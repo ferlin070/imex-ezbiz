@@ -28,16 +28,15 @@ export default async function CandidatePage({ params }: PageProps) {
     redirect('/mara/login')
   }
 
-  // 3. Fetch project details (must be mara_visible = true)
+  // 3. Fetch project details (must be mara_visible = true OR entry_type = 'direct')
   const { data: project, error: projectError } = await supabase
     .from('projects')
-    .select('id, title, description, category, team_members, event_id, owner_user_id, mara_visible, state, institution')
+    .select('id, title, description, category, team_members, event_id, owner_user_id, mara_visible, state, institution, entry_type, score_source, application_status')
     .eq('id', projectId)
-    .eq('mara_visible', true)
     .limit(1)
     .maybeSingle()
 
-  if (projectError || !project) {
+  if (projectError || !project || (!project.mara_visible && project.entry_type !== 'direct')) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 bg-[#020617] text-gray-100 min-h-screen">
         <h2 className="text-xl font-bold text-red-400">Profil Calon Tidak Dijumpai</h2>
@@ -55,6 +54,7 @@ export default async function CandidatePage({ params }: PageProps) {
     .insert({
       officer_id: user.id,
       project_id: projectId,
+      resource_type: 'project'
     })
 
   if (logError) {
@@ -62,17 +62,50 @@ export default async function CandidatePage({ params }: PageProps) {
   }
 
   // 5. Fetch scores and criteria to calculate feasibility
-  const { data: scores } = await supabase
-    .from('scores')
-    .select('*')
-    .eq('project_id', projectId)
+  let feasibilityResult = null
+  if (project.entry_type === 'direct') {
+    const { data: selfAss } = await supabase
+      .from('self_assessments')
+      .select('*')
+      .eq('project_id', projectId)
+      .limit(1)
+      .maybeSingle()
 
-  const { data: criteria } = await supabase
-    .from('criteria')
-    .select('*')
-    .eq('event_id', project.event_id)
+    if (selfAss) {
+      const { calculateSelfAssessment } = require('@/lib/selfAssessment')
+      const calc = calculateSelfAssessment(selfAss.responses)
+      feasibilityResult = {
+        score: calc.score,
+        tier: calc.tier,
+        criteriaBreakdown: calc.breakdown.map((b: any) => ({
+          criteriaId: b.criteriaCode,
+          code: b.criteriaCode,
+          label: b.label,
+          average: b.score,
+          percentage: (b.score / b.maxScore) * 100,
+          max_score: b.maxScore
+        }))
+      }
+    } else {
+      feasibilityResult = {
+        score: 0,
+        tier: 'Perlu Bimbingan',
+        criteriaBreakdown: []
+      }
+    }
+  } else {
+    const { data: scores } = await supabase
+      .from('scores')
+      .select('*')
+      .eq('project_id', projectId)
 
-  const feasibilityResult = calculateFeasibility(scores || [], criteria || [])
+    const { data: criteria } = await supabase
+      .from('criteria')
+      .select('*')
+      .eq('event_id', project.event_id)
+
+    feasibilityResult = calculateFeasibility(scores || [], criteria || [])
+  }
 
   // 6. Fetch existing AI report
   const { data: initialReport } = await supabase

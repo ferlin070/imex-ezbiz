@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ShieldCheck, Search, Filter, Briefcase, MapPin, Award, LogOut, Loader2, ArrowRight, BookOpen } from 'lucide-react'
+import SelfDeclaredBadge from '@/components/SelfDeclaredBadge'
 
 interface Candidate {
   id: string
@@ -14,6 +15,7 @@ interface Candidate {
   institution: string
   feasibility_score: number
   feasibility_tier: string
+  score_source?: string
 }
 
 export default function SearchPage() {
@@ -145,6 +147,9 @@ export default function SearchPage() {
           </a>
           <a href="/analytics" className="text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors uppercase tracking-wider">
             Analitis Prospek
+          </a>
+          <a href="/inbox" className="text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors uppercase tracking-wider">
+            Permohonan Pinjaman
           </a>
         </nav>
 
@@ -332,7 +337,12 @@ export default function SearchPage() {
                     <div className="bg-[#0b0f19]/80 p-3 rounded-xl border border-white/5 flex items-center justify-between mt-1">
                       <div>
                         <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Skor Kebolehsanaan</p>
-                        <p className="text-[10px] text-slate-300 font-black mt-0.5">{c.feasibility_tier}</p>
+                        <p className="text-[10px] text-slate-300 font-black mt-0.5 flex items-center gap-1.5">
+                          <span>{c.feasibility_tier}</span>
+                          {c.score_source === 'self_declared' && (
+                            <SelfDeclaredBadge />
+                          )}
+                        </p>
                       </div>
                       <div className="text-right">
                         <span className="text-lg font-black text-white">{c.feasibility_score}</span>

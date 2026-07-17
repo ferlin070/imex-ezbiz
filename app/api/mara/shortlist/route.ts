@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     const projectIds = shortlist.map((s: any) => s.project_id)
     const { data: projects } = await supabase
       .from('projects')
-      .select('id, title, description, category, state, institution')
+      .select('id, title, description, category, state, institution, entry_type, score_source')
       .in('id', projectIds)
 
     const { data: reports } = await supabase
@@ -56,12 +56,30 @@ export async function GET(request: Request) {
       .select('project_id, feasibility_score, feasibility_tier')
       .in('project_id', projectIds)
 
+    const { data: selfAssessments } = await supabase
+      .from('self_assessments')
+      .select('project_id, computed_score')
+      .in('project_id', projectIds)
+
     const projectsMap = new Map<string, any>((projects || []).map((p: any) => [p.id, p]))
     const reportsMap = new Map<string, any>((reports || []).map((r: any) => [r.project_id, r]))
+    const selfAssessmentsMap = new Map<string, number>((selfAssessments || []).map((sa: any) => [sa.project_id, Number(sa.computed_score)]))
 
     const enriched = shortlist.map((item: any) => {
       const p = projectsMap.get(item.project_id)
       const r = reportsMap.get(item.project_id)
+      
+      let score = r?.feasibility_score ? Number(r.feasibility_score) : 0
+      let tier = r?.feasibility_tier || 'Perlu Bimbingan'
+
+      if (!r && p?.entry_type === 'direct') {
+        score = selfAssessmentsMap.get(item.project_id) || 0
+        if (score >= 80) tier = 'Sangat Berpotensi'
+        else if (score >= 60) tier = 'Layak Komersial'
+        else if (score >= 40) tier = 'Berpotensi Sederhana'
+        else tier = 'Perlu Bimbingan'
+      }
+
       return {
         id: item.id,
         officer_id: item.officer_id,
@@ -75,8 +93,9 @@ export async function GET(request: Request) {
         project_category: p?.category || 'Lain-lain',
         project_state: p?.state || 'Tidak Dinyatakan',
         project_institution: p?.institution || 'Tidak Dinyatakan',
-        feasibility_score: r?.feasibility_score ? Number(r.feasibility_score) : 0,
-        feasibility_tier: r?.feasibility_tier || 'Perlu Bimbingan',
+        feasibility_score: score,
+        feasibility_tier: tier,
+        score_source: p?.score_source || 'expert_evaluated'
       }
     })
 

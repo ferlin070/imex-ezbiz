@@ -61,7 +61,7 @@ interface Profile {
 }
 
 interface AdminDashboardClientProps {
-  event: { id: string; name: string; slug: string }
+  event: { id: string; name: string; slug: string; event_type?: string }
   judges: Judge[]
   projects: Project[]
   scores: Score[]
@@ -83,7 +83,7 @@ export default function AdminDashboardClient({
   const supabase = createClient()
 
   // Active tab state
-  const [activeTab, setActiveTab] = useState<'analytics' | 'projects' | 'judges' | 'entrepreneurs' | 'ai'>('analytics')
+  const [activeTab, setActiveTab] = useState<'analytics' | 'projects' | 'judges' | 'entrepreneurs' | 'ai' | 'settings'>('analytics')
 
   // Forms states
   const [projTitle, setProjTitle] = useState('')
@@ -108,6 +108,31 @@ export default function AdminDashboardClient({
 
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+
+  const [eventType, setEventType] = useState(event.event_type || 'competition')
+  const [savingEvent, setSavingEvent] = useState(false)
+
+  const handleSaveEventSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingEvent(true)
+    setErrorMsg('')
+    setSuccessMsg('')
+
+    try {
+      const { error } = await supabase
+        .from('events')
+        .update({ event_type: eventType })
+        .eq('id', event.id)
+
+      if (error) throw error
+      setSuccessMsg('Tetapan acara berjaya disimpan!')
+      router.refresh()
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Gagal menyimpan tetapan acara.')
+    } finally {
+      setSavingEvent(false)
+    }
+  }
 
   // Load custom prompt from cookie on load
   useEffect(() => {
@@ -331,6 +356,13 @@ export default function AdminDashboardClient({
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push('/admin/loan-products')}
+            className="px-3 py-1.5 bg-teal-neon/10 hover:bg-teal-neon/20 border border-teal-neon/20 text-teal-neon font-bold text-xs rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+          >
+            <Settings className="w-3.5 h-3.5 animate-none" />
+            <span>Skim Pinjaman</span>
+          </button>
           <div className="text-right">
             <span className="text-xs font-semibold block text-red-400">{adminName}</span>
             <span className="text-[9px] text-gray-500 font-bold block uppercase">{event.name}</span>
@@ -450,6 +482,17 @@ export default function AdminDashboardClient({
           >
             <Sliders className="w-3.5 h-3.5" />
             Tetapan Prompt AI
+          </button>
+          <button
+            onClick={() => { setActiveTab('settings'); setErrorMsg(''); setSuccessMsg(''); }}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-lg transition-all border-b-2 cursor-pointer ${
+              activeTab === 'settings'
+                ? 'border-cyan-500 text-cyan-400 bg-white/5'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <Settings className="w-3.5 h-3.5" />
+            Tetapan Acara
           </button>
         </div>
 
@@ -995,9 +1038,66 @@ export default function AdminDashboardClient({
             </div>
           )}
 
-        </div>
+          {/* TAB 6: EVENT SETTINGS */}
+          {activeTab === 'settings' && (
+                <div className="glass-card rounded-xl border border-white/5 p-5 space-y-4 animate-fadeIn">
+                  <div className="flex items-center gap-2 text-teal-neon">
+                    <Settings className="w-5 h-5" />
+                    <div>
+                      <h3 className="font-bold text-sm text-gray-200">Tetapan Acara & Modul Penilaian</h3>
+                      <p className="text-xs text-gray-500">Konfigurasi jenis acara dan penyelarasan juri/penilai</p>
+                    </div>
+                  </div>
 
-      </main>
-    </div>
+                  <form onSubmit={handleSaveEventSettings} className="space-y-4 max-w-md">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-2">Nama Acara</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={event.name}
+                        className="w-full bg-navy-900/60 border border-white/10 rounded px-2.5 py-1.5 text-xs text-gray-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-2">Slug Acara</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={event.slug}
+                        className="w-full bg-navy-900/60 border border-white/10 rounded px-2.5 py-1.5 text-xs text-gray-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-gray-400 mb-2">Jenis Acara (Event Type)</label>
+                      <select
+                        value={eventType}
+                        onChange={(e) => setEventType(e.target.value)}
+                        className="w-full bg-navy-900/60 border border-white/10 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="competition">Competition (Pertandingan Standard seperti IMEX)</option>
+                        <option value="mara_program">MARA Program (Program Bimbingan & Pembiayaan MARA)</option>
+                      </select>
+                      <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">
+                        💡 Menukar jenis acara akan menyelaraskan paparan bagi ahli juri dari "Juri Pertandingan" kepada "Penilai Program MARA".
+                      </p>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={savingEvent}
+                      className="bg-teal-neon text-navy-950 text-xs font-bold px-4 py-2.5 rounded-lg transition-all hover:bg-teal-400 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                    >
+                      {savingEvent ? 'Menyimpan...' : 'Simpan Tetapan Acara'}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+
+          </main>
+        </div>
   )
 }

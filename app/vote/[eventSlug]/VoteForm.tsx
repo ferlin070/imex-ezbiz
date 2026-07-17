@@ -28,7 +28,7 @@ interface ScoreEntry {
 }
 
 interface VoteFormProps {
-  event: { id: string; name: string; slug: string }
+  event: { id: string; name: string; slug: string; event_type?: string }
   judge: { id: string; name: string; panel_label: string }
   criteria: Criterion[]
   projects: Project[]
@@ -165,7 +165,7 @@ export default function VoteForm({ event, judge, criteria, projects, initialScor
           <Award className="w-5 h-5 text-teal-neon" />
           <div>
             <h1 className="text-sm font-bold tracking-tight bg-gradient-to-r from-teal-neon to-cyan-neon bg-clip-text text-transparent">
-              IMEX AI-Biz
+              {event.event_type === 'mara_program' ? 'Penilai Program MARA' : 'IMEX AI-Biz'}
             </h1>
             <p className="text-[10px] text-gray-400 font-semibold uppercase">{event.name}</p>
           </div>
@@ -174,7 +174,9 @@ export default function VoteForm({ event, judge, criteria, projects, initialScor
         <div className="flex items-center gap-3">
           <div className="text-right">
             <span className="text-xs font-semibold block text-teal-neon">{judge.name}</span>
-            <span className="text-[9px] text-gray-500 font-bold block bg-white/5 px-1.5 py-0.5 rounded border border-white/5">{judge.panel_label}</span>
+            <span className="text-[9px] text-gray-500 font-bold block bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+              {event.event_type === 'mara_program' ? 'Penilai' : 'Juri'} - {judge.panel_label}
+            </span>
           </div>
           <button
             onClick={handleLogout}

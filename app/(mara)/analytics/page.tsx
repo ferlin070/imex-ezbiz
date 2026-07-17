@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ShieldCheck, Loader2, LogOut, TrendingUp, BarChart2, Award, Award as Ribbon, BookOpen, MapPin, ChevronRight, PieChart } from 'lucide-react'
+import SelfDeclaredBadge from '@/components/SelfDeclaredBadge'
 
 interface Stats {
   tiers: {
@@ -21,6 +22,7 @@ interface Stats {
     institution: string
     score: number
     tier: string
+    score_source?: string
   }[]
 }
 
@@ -150,6 +152,9 @@ export default function AnalyticsPage() {
           </a>
           <a href="/analytics" className="text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors uppercase tracking-wider">
             Analitis Prospek
+          </a>
+          <a href="/inbox" className="text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors uppercase tracking-wider">
+            Permohonan Pinjaman
           </a>
         </nav>
 
@@ -366,8 +371,11 @@ export default function AnalyticsPage() {
                       className="border-b border-white/5 hover:bg-white/[0.02] cursor-pointer transition-colors group"
                     >
                       <td className="py-3.5 px-2 font-black text-amber-500">#{idx + 1}</td>
-                      <td className="py-3.5 px-3 font-bold text-white group-hover:text-amber-400 transition-colors">
-                        {p.title}
+                      <td className="py-3.5 px-3 font-bold text-white group-hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                        <span>{p.title}</span>
+                        {p.score_source === 'self_declared' && (
+                          <SelfDeclaredBadge />
+                        )}
                       </td>
                       <td className="py-3.5 px-3 text-slate-400">{p.category}</td>
                       <td className="py-3.5 px-3 text-slate-400 flex items-center gap-1">

@@ -20,6 +20,7 @@ interface Project {
   mara_visible?: boolean
   state?: string
   institution?: string
+  score_source?: string
 }
 
 interface Report {
@@ -372,7 +373,7 @@ export default function ProjectDashboardClient({
           /* Empty state - CTA to generate report */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1 flex flex-col gap-6">
-              <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} />
+              <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} scoreSource={project.score_source} />
               {renderCriteriaBreakdown()}
               {renderConsentCard()}
             </div>
@@ -403,7 +404,7 @@ export default function ProjectDashboardClient({
             
             {/* Left: Gauge + Grants */}
             <div className="md:col-span-1 flex flex-col gap-6">
-              <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} />
+              <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} scoreSource={project.score_source} />
               {renderCriteriaBreakdown()}
               {renderConsentCard()}
 

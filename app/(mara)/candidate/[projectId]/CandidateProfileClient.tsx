@@ -17,6 +17,8 @@ interface Project {
   owner_user_id: string | null
   state?: string
   institution?: string
+  score_source?: string
+  entry_type?: string
 }
 
 interface Scheme {
@@ -373,6 +375,22 @@ export default function CandidateProfileClient({
           </div>
         </div>
 
+        {/* Portal Navigation */}
+        <nav className="hidden md:flex items-center gap-6">
+          <a href="/search" className="text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors uppercase tracking-wider">
+            Carian Calon
+          </a>
+          <a href="/shortlist" className="text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors uppercase tracking-wider">
+            Senarai Pendek
+          </a>
+          <a href="/analytics" className="text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors uppercase tracking-wider">
+            Analitis Prospek
+          </a>
+          <a href="/inbox" className="text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors uppercase tracking-wider">
+            Permohonan Pinjaman
+          </a>
+        </nav>
+
         {/* User profile & logout */}
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
@@ -422,7 +440,7 @@ export default function CandidateProfileClient({
         {/* Left Column: Feasibility & Shortlist */}
         <div className="lg:col-span-1 space-y-6 flex flex-col">
           {/* Feasibility Gauge */}
-          <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} />
+          <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} scoreSource={project.score_source} />
           
           {/* K1-K5 Scoring breakdown */}
           {renderScoringBreakdown()}

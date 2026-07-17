@@ -20,7 +20,7 @@ export default async function ProjectPage({ params }: PageProps) {
   // 2. Fetch project metadata
   const { data: project, error: projectError } = await supabase
     .from('projects')
-    .select('id, title, description, category, team_members, event_id, owner_user_id, mara_visible, state, institution')
+    .select('id, title, description, category, team_members, event_id, owner_user_id, mara_visible, state, institution, entry_type, score_source, application_status')
     .eq('id', projectId)
     .limit(1)
     .maybeSingle()
@@ -62,18 +62,50 @@ export default async function ProjectPage({ params }: PageProps) {
   }
 
   // 4. Fetch criteria & scores to calculate feasibility score server-side
-  const { data: criteria } = await supabase
-    .from('criteria')
-    .select('id, code, label, max_score, weight')
-    .eq('event_id', project.event_id)
+  let feasibilityResult = null
+  if (project.entry_type === 'direct') {
+    const { data: selfAss } = await supabase
+      .from('self_assessments')
+      .select('*')
+      .eq('project_id', projectId)
+      .limit(1)
+      .maybeSingle()
 
-  const { data: scores } = await supabase
-    .from('scores')
-    .select('project_id, judge_id, criteria_id, score')
-    .eq('project_id', projectId)
+    if (selfAss) {
+      const { calculateSelfAssessment } = require('@/lib/selfAssessment')
+      const calc = calculateSelfAssessment(selfAss.responses)
+      feasibilityResult = {
+        score: calc.score,
+        tier: calc.tier,
+        criteriaBreakdown: calc.breakdown.map((b: any) => ({
+          criteriaId: b.criteriaCode,
+          code: b.criteriaCode,
+          label: b.label,
+          average: b.score,
+          percentage: (b.score / b.maxScore) * 100,
+          max_score: b.maxScore
+        }))
+      }
+    } else {
+      feasibilityResult = {
+        score: 0,
+        tier: 'Perlu Bimbingan',
+        criteriaBreakdown: []
+      }
+    }
+  } else {
+    const { data: criteria } = await supabase
+      .from('criteria')
+      .select('id, code, label, max_score, weight')
+      .eq('event_id', project.event_id)
 
-  // Compute feasibility
-  const feasibilityResult = calculateFeasibility(scores || [], criteria || [])
+    const { data: scores } = await supabase
+      .from('scores')
+      .select('project_id, judge_id, criteria_id, score')
+      .eq('project_id', projectId)
+
+    feasibilityResult = calculateFeasibility(scores || [], criteria || [])
+  }
 
   // 5. Fetch existing cached AI report (if it exists)
   const { data: report } = await supabase

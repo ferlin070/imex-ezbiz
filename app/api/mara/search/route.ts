@@ -40,11 +40,11 @@ export async function POST(request: Request) {
 
     const { tier, sector, state, query } = parsed.data
 
-    // 4. Fetch all projects where mara_visible = true
+    // 4. Fetch all projects where mara_visible = true OR entry_type = 'direct'
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
       .select('*')
-      .eq('mara_visible', true)
+      .or('mara_visible.eq.true,entry_type.eq.direct')
 
     if (projectsError) {
       console.error('Fetch projects error:', projectsError)
@@ -65,6 +65,17 @@ export async function POST(request: Request) {
     const reportsMap = new Map()
     reports?.forEach((r: any) => {
       reportsMap.set(r.project_id, r)
+    })
+
+    // Fetch all self_assessments for direct projects
+    const { data: selfAssessments } = await supabase
+      .from('self_assessments')
+      .select('project_id, computed_score')
+      .in('project_id', projectIds)
+
+    const selfAssessmentsMap = new Map()
+    selfAssessments?.forEach((sa: any) => {
+      selfAssessmentsMap.set(sa.project_id, Number(sa.computed_score))
     })
 
     // Fetch all scores for the projects to calculate feasibility score in case reports are missing
@@ -93,12 +104,20 @@ export async function POST(request: Request) {
 
       // Fallback calculation if no AI report generated yet
       if (!report) {
-        const projScores = scoresByProject.get(p.id) || []
-        const projCriteria = allCriteria || []
-        if (projScores.length > 0) {
-          const calc = calculateFeasibility(projScores, projCriteria)
-          score = calc.score
-          tier = calc.tier
+        if (p.entry_type === 'direct') {
+          score = selfAssessmentsMap.get(p.id) || 0
+          if (score >= 80) tier = 'Sangat Berpotensi'
+          else if (score >= 60) tier = 'Layak Komersial'
+          else if (score >= 40) tier = 'Berpotensi Sederhana'
+          else tier = 'Perlu Bimbingan'
+        } else {
+          const projScores = scoresByProject.get(p.id) || []
+          const projCriteria = allCriteria || []
+          if (projScores.length > 0) {
+            const calc = calculateFeasibility(projScores, projCriteria)
+            score = calc.score
+            tier = calc.tier
+          }
         }
       }
 
@@ -112,6 +131,8 @@ export async function POST(request: Request) {
         institution: p.institution || 'Tidak Dinyatakan',
         feasibility_score: score,
         feasibility_tier: tier,
+        entry_type: p.entry_type,
+        score_source: p.score_source
       }
     })
 
