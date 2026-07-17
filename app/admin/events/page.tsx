@@ -14,7 +14,7 @@ export default async function AdminEventsPage() {
     .select('*')
     .order('created_at', { ascending: false })
 
-  const statusMap: Record<string, { label: string; bg: string; text: string }> = {
+  const statusMap: Record<string, { label: string; bg: string }> = {
     draft: { label: 'Draf', bg: 'bg-slate-800 text-slate-400 border-slate-700' },
     open: { label: 'Dibuka', bg: 'bg-teal-500/10 text-teal-400 border-teal-500/30' },
     closed: { label: 'Ditutup', bg: 'bg-rose-500/10 text-rose-400 border-rose-500/30' },
@@ -51,7 +51,7 @@ export default async function AdminEventsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {events.map((evt) => {
+              {events.map((evt: any) => {
                 const statusConfig = statusMap[evt.status || 'draft'] || statusMap.draft
                 const startDateStr = evt.start_date 
                   ? new Date(evt.start_date).toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' })
