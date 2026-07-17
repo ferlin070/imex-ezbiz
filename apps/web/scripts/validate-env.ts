@@ -1,6 +1,12 @@
 import { loadEnvConfig } from '@next/env'
 import { z } from 'zod'
 
+// Skip strict validation on CI/Vercel build — env vars injected by platform at runtime
+if (process.env.CI || process.env.VERCEL) {
+  console.log('ℹ️  CI/Vercel detected — skipping env validation (platform injects vars at runtime).')
+  process.exit(0)
+}
+
 // Load environment variables from .env.local/env files
 loadEnvConfig(process.cwd())
 
