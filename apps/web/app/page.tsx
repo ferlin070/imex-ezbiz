@@ -83,7 +83,7 @@ export default function Home() {
 
             <div className="mt-auto pt-4">
               <Link
-                href="/mara/login"
+                href="/login"
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-navy-950 font-black rounded-lg hover:shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider cursor-pointer"
               >
                 <span>Log Masuk Pegawai</span>

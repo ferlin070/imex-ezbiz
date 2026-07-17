@@ -86,7 +86,7 @@ export default function LoanApplicationFormClient({
 
       setSuccess(true)
       setTimeout(() => {
-        router.push(`/project/${project.id}`)
+        router.push('/usahawan')
       }, 3000)
     } catch (err: any) {
       setErrorMsg(err.message || 'Ralat semasa menghantar permohonan.')

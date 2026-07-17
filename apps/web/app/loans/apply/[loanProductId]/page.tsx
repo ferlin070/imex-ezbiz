@@ -48,7 +48,7 @@ export default async function LoanApplyPage({ params, searchParams }: PageProps)
           <p className="text-sm text-slate-400">
             Anda perlu melengkapkan pendaftaran profil perniagaan usahawan terlebih dahulu sebelum boleh memohon skim pembiayaan MARA.
           </p>
-          <Link href="/register/track" className="inline-block px-5 py-2.5 bg-blue-500 hover:bg-blue-600 font-bold rounded-xl text-xs transition">
+          <Link href="/usahawan" className="inline-block px-5 py-2.5 bg-blue-500 hover:bg-blue-600 font-bold rounded-xl text-xs transition">
             Daftar Profil Perniagaan
           </Link>
         </div>
