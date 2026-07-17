@@ -165,13 +165,22 @@ export default async function UsahawanDashboard() {
         </div>
 
         {hasProfile && (
-          <Link
-            href="/loans"
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold text-slate-900 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 rounded-xl transition shadow-lg shadow-teal-500/25 active:scale-95"
-          >
-            <Landmark className="h-4.5 w-4.5 text-slate-900" />
-            Mohon Skim Pembiayaan
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href={`/project/${project.id}`}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold text-slate-100 bg-slate-900 border border-slate-800 hover:bg-slate-850 rounded-xl transition active:scale-95"
+            >
+              <FileText className="h-4.5 w-4.5 text-slate-400" />
+              Laporan SWOT &amp; Pitch AI
+            </Link>
+            <Link
+              href="/loans"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-bold text-slate-900 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 rounded-xl transition shadow-lg shadow-teal-500/25 active:scale-95"
+            >
+              <Landmark className="h-4.5 w-4.5 text-slate-900" />
+              Mohon Skim Pembiayaan
+            </Link>
+          </div>
         )}
       </div>
 
