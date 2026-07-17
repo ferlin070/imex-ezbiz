@@ -8,30 +8,14 @@ export async function proxy(request: NextRequest) {
     },
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const isDummy = !supabaseUrl || !anonKey || supabaseUrl.includes('dummy')
 
   let user = null
   let role = null
   let isMock = false
+  let supabase: any = null
 
   // Try reading mock cookie session first
   const mockSessionCookie = request.cookies.get('imex_mock_session')?.value
@@ -44,9 +28,30 @@ export async function proxy(request: NextRequest) {
     } catch {}
   }
 
-  // If not mock session, try real Supabase auth (wrapped in try/catch to ignore offline errors)
-  if (!user) {
+  // If not mock session and we have real credentials, try real Supabase auth
+  if (!isDummy && !user) {
     try {
+      supabase = createServerClient(
+        supabaseUrl!,
+        anonKey!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll()
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+              response = NextResponse.next({
+                request,
+              })
+              cookiesToSet.forEach(({ name, value, options }) =>
+                response.cookies.set(name, value, options)
+              )
+            },
+          },
+        }
+      )
+
       const { data: { user: supabaseUser } } = await supabase.auth.getUser()
       if (supabaseUser) {
         user = supabaseUser
@@ -116,13 +121,15 @@ export async function proxy(request: NextRequest) {
         }
       } else {
         try {
-          const { data: project } = await supabase
-            .from('projects')
-            .select('id')
-            .eq('owner_user_id', user.id)
-            .limit(1)
-            .maybeSingle()
-          projectId = project?.id
+          if (supabase) {
+            const { data: project } = await supabase
+              .from('projects')
+              .select('id')
+              .eq('owner_user_id', user.id)
+              .limit(1)
+              .maybeSingle()
+            projectId = project?.id
+          }
         } catch {}
       }
 
