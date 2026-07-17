@@ -3,7 +3,9 @@ import { cookies } from 'next/headers'
 import { createMockSupabaseClient } from './mockClient'
 
 export async function createClient() {
-  const isDummy = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('dummy')
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const isDummy = !url || !key || url.includes('dummy')
   
   let mockSessionVal = null
   try {
@@ -25,8 +27,8 @@ export async function createClient() {
   const cookieStore = await cookies()
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url!,
+    key!,
     {
       cookies: {
         getAll() {
@@ -47,14 +49,17 @@ export async function createClient() {
 }
 
 export function createAdminClient() {
-  const isDummy = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('dummy')
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const isDummy = !url || !serviceKey || url.includes('dummy')
+
   if (isDummy) {
     return createMockSupabaseClient('admin-id-mock-uuid')
   }
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    url!,
+    serviceKey!,
     {
       cookies: {
         getAll() {

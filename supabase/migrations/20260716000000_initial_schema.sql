@@ -1,3 +1,6 @@
+-- ========== DROP EXISTING TABLES IF ANY (CLEAN SLATE) ==========
+drop table if exists ai_reports, scores, judges, projects, criteria, events, profiles cascade;
+
 -- ========== PROFILES ==========
 create table profiles (
   id uuid primary key references auth.users(id) on delete cascade,

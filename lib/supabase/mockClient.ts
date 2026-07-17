@@ -37,6 +37,10 @@ export function createMockSupabaseClient(userId: string | null) {
         _order: null as any,
         _single: false,
         _maybeSingle: false,
+        _updatePayload: null as any,
+        _insertPayload: null as any,
+        _upsertPayload: null as any,
+        _deleteFlag: false,
 
         select(fields?: string) { return this },
         eq(col: string, val: any) {
@@ -64,6 +68,89 @@ export function createMockSupabaseClient(userId: string | null) {
         // Promise resolver to support awaiting the builder directly
         async then(resolve: any) {
           try {
+            if (this._updatePayload) {
+              const id = this._eq['id']
+              if (table === 'projects' && id) {
+                const updated = mockDb.updateProject(id, this._updatePayload)
+                resolve({ data: updated, error: null })
+                return
+              }
+              if (table === 'grant_schemes' && id) {
+                const updated = mockDb.updateGrantScheme(id, this._updatePayload)
+                resolve({ data: updated, error: null })
+                return
+              }
+              if (table === 'mara_shortlist') {
+                const officerId = this._eq['officer_id']
+                const projectId = this._eq['project_id']
+                if (officerId && projectId) {
+                  const updated = mockDb.upsertShortlist({ officer_id: officerId, project_id: projectId, ...this._updatePayload })
+                  resolve({ data: updated, error: null })
+                  return
+                }
+              }
+              resolve({ data: null, error: null })
+              return
+            }
+            if (this._upsertPayload) {
+              let upsertData = null
+              if (table === 'scores') {
+                mockDb.submitScore(this._upsertPayload.project_id, this._upsertPayload.judge_id, this._upsertPayload.criteria_id, this._upsertPayload.score)
+                upsertData = this._upsertPayload
+              } else if (table === 'ai_reports') {
+                upsertData = mockDb.upsertAiReport(this._upsertPayload.project_id, this._upsertPayload)
+              } else if (table === 'grant_matches') {
+                upsertData = mockDb.upsertGrantMatch(this._upsertPayload)
+              } else if (table === 'mara_shortlist') {
+                upsertData = mockDb.upsertShortlist(this._upsertPayload)
+              }
+              const finalData = this._single || this._maybeSingle ? upsertData : (upsertData ? [upsertData] : null)
+              resolve({ data: finalData, error: null })
+              return
+            }
+            if (this._insertPayload) {
+              let insertData = null
+              if (table === 'projects') {
+                insertData = mockDb.insertProject(this._insertPayload)
+              } else if (table === 'judges') {
+                const { judge } = mockDb.insertJudge(this._insertPayload.name, this._insertPayload.panel_label, this._insertPayload.email)
+                insertData = judge
+              } else if (table === 'profiles') {
+                insertData = mockDb.insertEntrepreneur(this._insertPayload.name, this._insertPayload.email, this._insertPayload.project_id)
+              } else if (table === 'mara_access_log') {
+                insertData = mockDb.insertAccessLog(this._insertPayload.officer_id, this._insertPayload.project_id)
+              } else if (table === 'grant_schemes') {
+                insertData = mockDb.insertGrantScheme(this._insertPayload)
+              }
+              const finalData = this._single || this._maybeSingle ? insertData : (insertData ? [insertData] : null)
+              resolve({ data: finalData, error: null })
+              return
+            }
+            if (this._deleteFlag) {
+              const id = this._eq['id']
+              if (table === 'projects' && id) {
+                mockDb.deleteProject(id)
+                resolve({ error: null })
+                return
+              }
+              if (table === 'judges' && id) {
+                mockDb.deleteJudge(id)
+                resolve({ error: null })
+                return
+              }
+              if (table === 'profiles' && id) {
+                mockDb.deleteProfile(id)
+                resolve({ error: null })
+                return
+              }
+              if (table === 'grant_schemes' && id) {
+                mockDb.deleteGrantScheme(id)
+                resolve({ error: null })
+                return
+              }
+              resolve({ error: null })
+              return
+            }
             const data = await this.execute()
             const count = Array.isArray(data) ? data.length : (data ? 1 : 0)
             resolve({ data, count, error: null })
@@ -78,7 +165,7 @@ export function createMockSupabaseClient(userId: string | null) {
             if (uid) {
               return mockDb.getProfileById(uid)
             }
-            return null
+            return mockDb.getProfiles()
           }
           if (table === 'events') {
             const slug = this._eq['slug']
@@ -88,27 +175,27 @@ export function createMockSupabaseClient(userId: string | null) {
             return null
           }
           if (table === 'criteria') {
-            const eventId = this._eq['event_id']
-            if (eventId) {
-              return mockDb.getCriteriaByEventId(eventId)
-            }
-            return []
+            const eventId = this._eq['event_id'] || 'e1111111-1111-1111-1111-111111111111'
+            return mockDb.getCriteriaByEventId(eventId)
           }
           if (table === 'projects') {
             const id = this._eq['id']
             if (id) {
               return mockDb.getProjectById(id)
             }
-            const ownerId = this._eq['owner_user_id']
-            if (ownerId) {
-              const all = mockDb.getProjectsByEventId('e1111111-1111-1111-1111-111111111111')
-              return all.filter((p) => p.owner_user_id === ownerId)
-            }
-            const eventId = this._eq['event_id']
-            if (eventId) {
-              return mockDb.getProjectsByEventId(eventId)
-            }
-            return mockDb.getProjectsByEventId('e1111111-1111-1111-1111-111111111111')
+            
+            // Get all projects for event (or default event)
+            const eventId = this._eq['event_id'] || 'e1111111-1111-1111-1111-111111111111'
+            let all = mockDb.getProjectsByEventId(eventId)
+
+            // Dynamically apply other filters from this._eq
+            Object.keys(this._eq).forEach((key) => {
+              if (key !== 'id' && key !== 'event_id' && this._eq[key] !== undefined) {
+                all = all.filter((p: any) => p[key] === this._eq[key])
+              }
+            })
+
+            return all
           }
           if (table === 'judges') {
             const uid = this._eq['user_id']
@@ -143,38 +230,53 @@ export function createMockSupabaseClient(userId: string | null) {
             if (projectId) {
               return mockDb.getAiReport(projectId)
             }
-            return null
+            const projectIds = this._in['project_id']
+            if (projectIds) {
+              return mockDb.getAiReports().filter((r: any) => projectIds.includes(r.project_id))
+            }
+            return mockDb.getAiReports()
+          }
+          if (table === 'grant_schemes') {
+            return mockDb.getGrantSchemes()
+          }
+          if (table === 'grant_matches') {
+            const projectId = this._eq['project_id']
+            if (projectId) {
+              return mockDb.getGrantMatchesByProject(projectId)
+            }
+            return []
+          }
+          if (table === 'mara_shortlist') {
+            const officerId = this._eq['officer_id']
+            if (officerId) {
+              return mockDb.getShortlistByOfficer(officerId)
+            }
+            return []
+          }
+          if (table === 'mara_access_log') {
+            return mockDb.getAccessLogs()
           }
           return null
         },
 
-        async insert(payload: any) {
-          if (table === 'projects') {
-            const created = mockDb.insertProject(payload)
-            return { data: created, error: null }
-          }
-          return { data: null, error: null }
+        insert(payload: any) {
+          this._insertPayload = payload
+          return this
         },
 
-        async upsert(payload: any, options?: any) {
-          if (table === 'scores') {
-            mockDb.submitScore(payload.project_id, payload.judge_id, payload.criteria_id, payload.score)
-            return { data: payload, error: null }
-          }
-          if (table === 'ai_reports') {
-            const created = mockDb.upsertAiReport(payload.project_id, payload)
-            return { data: created, error: null }
-          }
-          return { data: null, error: null }
+        upsert(payload: any, options?: any) {
+          this._upsertPayload = payload
+          return this
         },
 
-        async delete() {
-          const id = this._eq['id']
-          if (table === 'projects' && id) {
-            mockDb.deleteProject(id)
-            return { error: null }
-          }
-          return { error: null }
+        update(payload: any) {
+          this._updatePayload = payload
+          return this
+        },
+
+        delete() {
+          this._deleteFlag = true
+          return this
         },
       }
       return builder

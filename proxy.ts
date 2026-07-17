@@ -64,13 +64,31 @@ export async function proxy(request: NextRequest) {
 
   const url = request.nextUrl.clone()
   const isAuthPage = url.pathname === '/login'
+  const isMaraAuthPage = url.pathname === '/mara/login'
   const isJudgePage = url.pathname.startsWith('/vote') || url.pathname.startsWith('/ranking')
   const isDashboardPage = url.pathname.startsWith('/project')
   const isAdminPage = url.pathname.startsWith('/admin')
+  const isMaraPage = url.pathname.startsWith('/search') || 
+                     url.pathname.startsWith('/candidate') || 
+                     url.pathname.startsWith('/shortlist') || 
+                     url.pathname.startsWith('/analytics')
 
   // Allow access to public resources and API routes without interception
   if (url.pathname.startsWith('/api') || url.pathname === '/') {
     return response
+  }
+
+  // Guard MARA pages: only allow mara_officer or admin
+  if (isMaraPage) {
+    if (!user) {
+      url.pathname = '/mara/login'
+      return NextResponse.redirect(url)
+    }
+    if (role !== 'mara_officer' && role !== 'admin') {
+      // If entrepreneur or judge attempts to access MARA, redirect to login page
+      url.pathname = '/mara/login'
+      return NextResponse.redirect(url)
+    }
   }
 
   if (!user && (isJudgePage || isDashboardPage || isAdminPage)) {
@@ -78,21 +96,23 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (user && isAuthPage) {
+  if (user && (isAuthPage || isMaraAuthPage)) {
     // Redirect logged-in user to their respective homepage
     if (role === 'judge') {
       url.pathname = '/ranking/ikm-besut-2026'
     } else if (role === 'admin') {
       url.pathname = '/admin/events'
+    } else if (role === 'mara_officer') {
+      url.pathname = '/search'
     } else {
       let projectId = null
 
       if (isMock) {
         // Mock entrepreneur projects
         if (user.id === 'b1111111-1111-1111-1111-111111111111') {
-          projectId = 'p1111111-1111-1111-1111-111111111111'
+          projectId = 'd1111111-1111-1111-1111-111111111111'
         } else if (user.id === 'b2222222-2222-2222-2222-222222222222') {
-          projectId = 'p2222222-2222-2222-2222-222222222222'
+          projectId = 'd2222222-2222-2222-2222-222222222222'
         }
       } else {
         try {

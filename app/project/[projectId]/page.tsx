@@ -20,7 +20,7 @@ export default async function ProjectPage({ params }: PageProps) {
   // 2. Fetch project metadata
   const { data: project, error: projectError } = await supabase
     .from('projects')
-    .select('id, title, description, category, team_members, event_id, owner_user_id')
+    .select('id, title, description, category, team_members, event_id, owner_user_id, mara_visible, state, institution')
     .eq('id', projectId)
     .limit(1)
     .maybeSingle()
@@ -86,10 +86,7 @@ export default async function ProjectPage({ params }: PageProps) {
   return (
     <ProjectDashboardClient
       project={project}
-      feasibilityResult={{
-        score: feasibilityResult.score,
-        tier: feasibilityResult.tier,
-      }}
+      feasibilityResult={feasibilityResult}
       initialReport={report}
       userName={profile?.name || user.email || ''}
     />

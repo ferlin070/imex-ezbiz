@@ -68,8 +68,8 @@ export default function LoginPage() {
             'juri1@gmail.com': { role: 'judge' },
             'juri2@gmail.com': { role: 'judge' },
             'juri3@gmail.com': { role: 'judge' },
-            'usahawan1@gmail.com': { role: 'entrepreneur', projectId: 'p1111111-1111-1111-1111-111111111111' },
-            'usahawan2@gmail.com': { role: 'entrepreneur', projectId: 'p2222222-2222-2222-2222-222222222222' },
+            'usahawan1@gmail.com': { role: 'entrepreneur', projectId: 'd1111111-1111-1111-1111-111111111111' },
+            'usahawan2@gmail.com': { role: 'entrepreneur', projectId: 'd2222222-2222-2222-2222-222222222222' },
             'admin@gmail.com': { role: 'admin' }
           }
           const match = mockUsers[email]

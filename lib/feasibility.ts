@@ -22,6 +22,7 @@ export interface FeasibilityResult {
     label: string
     average: number
     percentage: number
+    max_score: number
   }[]
 }
 
@@ -72,6 +73,7 @@ export function calculateFeasibility(
       label: c.label,
       average: Number(avgScore.toFixed(1)),
       percentage: Number(percentage.toFixed(1)),
+      max_score: maxScore,
     }
   })
 

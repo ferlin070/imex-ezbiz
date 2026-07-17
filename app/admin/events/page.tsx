@@ -78,6 +78,11 @@ export default async function AdminPage() {
     .from('ai_reports')
     .select('id, project_id, feasibility_score, feasibility_tier, generated_at')
 
+  // Fetch all profiles
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('*')
+
   return (
     <AdminDashboardClient
       event={event}
@@ -85,6 +90,7 @@ export default async function AdminPage() {
       projects={projects || []}
       scores={scores || []}
       reports={reports || []}
+      profiles={profiles || []}
       adminName={profile?.name || user.email || ''}
     />
   )

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, FileText, ArrowRight, RefreshCw, AlertCircle, LogOut, CheckCircle2, ChevronRight, Download } from 'lucide-react'
+import { Sparkles, FileText, ArrowRight, RefreshCw, AlertCircle, LogOut, CheckCircle2, ChevronRight, Download, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import FeasibilityGauge from '@/components/FeasibilityGauge'
 import SwotTabs from '@/components/SwotTabs'
@@ -16,6 +16,10 @@ interface Project {
   category: string
   team_members: string[]
   event_id: string
+  owner_user_id: string | null
+  mara_visible?: boolean
+  state?: string
+  institution?: string
 }
 
 interface Report {
@@ -32,7 +36,18 @@ interface Report {
 
 interface ProjectDashboardClientProps {
   project: Project
-  feasibilityResult: { score: number; tier: any }
+  feasibilityResult: { 
+    score: number
+    tier: any
+    criteriaBreakdown: {
+      criteriaId: string
+      code: string
+      label: string
+      average: number
+      percentage: number
+      max_score: number
+    }[]
+  }
   initialReport: Report | null
   userName: string
 }
@@ -47,10 +62,41 @@ export default function ProjectDashboardClient({
   const supabase = createClient()
 
   const [report, setReport] = useState<Report | null>(initialReport)
+  const [maraVisible, setMaraVisible] = useState(project.mara_visible || false)
+  const [updatingConsent, setUpdatingConsent] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genStep, setGenStep] = useState(0) // 0 to 4 steps of progress
   const [errorMsg, setErrorMsg] = useState('')
   const [countdown, setCountdown] = useState(0)
+
+  const handleToggleConsent = async () => {
+    setUpdatingConsent(true)
+    setErrorMsg('')
+    const newStatus = !maraVisible
+    try {
+      const res = await fetch('/api/project/consent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: project.id,
+          maraVisible: newStatus,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Gagal mengemas kini kebenaran MARA.')
+      }
+
+      setMaraVisible(newStatus)
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Gagal mengemas kini kebenaran MARA.')
+    } finally {
+      setUpdatingConsent(false)
+    }
+  }
 
   // Track rate limit countdown
   useEffect(() => {
@@ -120,6 +166,72 @@ export default function ProjectDashboardClient({
     { key: 'tekun', title: 'TEKUN Nasional / PUNB', desc: report?.grant_notes?.tekun },
     { key: 'mdec', title: 'MDEC (SME Digital Grant) / Cradle', desc: report?.grant_notes?.mdec },
   ]
+
+  const renderCriteriaBreakdown = () => (
+    <div className="glass-card rounded-xl border border-white/5 p-5 flex flex-col gap-4">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Pecahan Markah i-MARATeCH 2021</h3>
+      <div className="space-y-4">
+        {feasibilityResult.criteriaBreakdown?.map((c) => (
+          <div key={c.criteriaId}>
+            <div className="flex justify-between text-xs text-gray-400 mb-1">
+              <span className="font-bold text-gray-300">{c.code}: {c.label}</span>
+              <span className="font-black text-white">{c.average} <span className="text-gray-500 font-normal">/ {c.max_score}</span></span>
+            </div>
+            <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5 p-0.5">
+              <div 
+                className="bg-gradient-to-r from-teal-500 to-teal-400 h-full rounded-full transition-all duration-1000" 
+                style={{ width: `${c.percentage}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
+  const renderConsentCard = () => (
+    <div className="glass-card rounded-xl border border-amber-500/20 p-5 flex flex-col gap-4 relative overflow-hidden bg-gradient-to-br from-amber-500/5 to-transparent shadow-[0_0_15px_rgba(245,158,11,0.02)]">
+      {/* Decorative corner glow */}
+      <div className="absolute -top-12 -right-12 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+      <div className="flex items-center gap-2 text-amber-400">
+        <ShieldCheck className="w-5 h-5" />
+        <div>
+          <h3 className="font-bold text-xs uppercase tracking-wider text-gray-200">Peluang Geran & Pembiayaan MARA</h3>
+          <p className="text-[9px] text-gray-500 font-bold uppercase">Sistem Pencarian Talent Scout</p>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-gray-400 leading-relaxed">
+        Dengan membenarkan akses, projek anda, skor juri, dan analisis AI akan didedahkan kepada pegawai MARA untuk pertimbangan geran/pembiayaan.
+      </p>
+
+      <div className="flex items-center justify-between bg-navy-950/60 p-3 rounded-lg border border-white/5">
+        <div className="flex items-center gap-2">
+          {maraVisible ? (
+            <Eye className="w-4 h-4 text-green-400" />
+          ) : (
+            <EyeOff className="w-4 h-4 text-gray-500" />
+          )}
+          <span className="text-xs font-bold text-gray-300">
+            {maraVisible ? 'Akses MARA: DIBENARKAN' : 'Akses MARA: DISEKAT'}
+          </span>
+        </div>
+
+        <button
+          onClick={handleToggleConsent}
+          disabled={updatingConsent}
+          className={`px-3 py-1.5 rounded text-xs font-extrabold transition-all cursor-pointer ${
+            maraVisible
+              ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
+              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
+          }`}
+        >
+          {updatingConsent ? 'Memproses...' : maraVisible ? 'Tarik Balik' : 'Benarkan'}
+        </button>
+      </div>
+    </div>
+  )
 
   // Render generator steps
   const steps = [
@@ -259,8 +371,10 @@ export default function ProjectDashboardClient({
         ) : !report ? (
           /* Empty state - CTA to generate report */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-1">
+            <div className="md:col-span-1 flex flex-col gap-6">
               <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} />
+              {renderCriteriaBreakdown()}
+              {renderConsentCard()}
             </div>
             
             <div className="md:col-span-2 glass-card rounded-xl border border-white/5 p-8 flex flex-col justify-center items-center text-center gap-6">
@@ -290,6 +404,8 @@ export default function ProjectDashboardClient({
             {/* Left: Gauge + Grants */}
             <div className="md:col-span-1 flex flex-col gap-6">
               <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} />
+              {renderCriteriaBreakdown()}
+              {renderConsentCard()}
 
               {/* Grant notes card */}
               <div className="glass-card rounded-xl border border-white/5 p-5 flex flex-col gap-4">
