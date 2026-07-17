@@ -1,27 +1,16 @@
-import { createClient } from '@/lib/supabase/server'
+import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { calculateFeasibility } from '@/lib/feasibility'
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return new Response('Tidak dibenarkan. Sila log masuk.', { status: 401 })
+    const auth = await requireRole(['mara_officer', 'admin'])
+    if (auth.error) {
+      const status = auth.error.status
+      const msg = status === 401 ? 'Tidak dibenarkan. Sila log masuk.' : 'Akses dinafikan. Anda bukan pegawai MARA yang sah.'
+      return new Response(msg, { status })
     }
-
-    // 2. Verify role: admin or mara_officer
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || (profile.role !== 'mara_officer' && profile.role !== 'admin')) {
-      return new Response('Akses dinafikan. Anda bukan pegawai MARA yang sah.', { status: 403 })
-    }
+    const { user, supabase } = auth
 
     // 3. Fetch current officer shortlist
     const { data: shortlist, error: shortlistError } = await supabase

@@ -1,5 +1,28 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document' // DOCX
+]
+
+const MIME_TO_EXTENSION: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
+}
+
+const fileUploadSchema = z.object({
+  file: z.any()
+    .refine((file) => file instanceof File, 'Fail tidak sah atau tiada fail dipilih.')
+    .refine((file) => file instanceof File && file.size <= MAX_FILE_SIZE_BYTES, 'Saiz fail melebihi had maksimum 10MB.')
+    .refine((file) => file instanceof File && ALLOWED_MIME_TYPES.includes(file.type), 'Format fail tidak dibenarkan. Hanya PDF, JPEG, PNG, dan DOCX sahaja dibenarkan.')
+})
 
 export async function POST(request: Request) {
   try {
@@ -13,21 +36,31 @@ export async function POST(request: Request) {
 
     // 2. Parse form data
     const formData = await request.formData()
-    const file = formData.get('file') as File | null
-    if (!file) {
-      return NextResponse.json({ error: 'Fail tidak ditemui dalam permintaan.' }, { status: 400 })
+    const file = formData.get('file')
+
+    // 3. Validate file upload using Zod schema
+    const parsedResult = fileUploadSchema.safeParse({ file })
+    if (!parsedResult.success) {
+      const errorMsg = parsedResult.error.issues[0]?.message || 'Validasi fail gagal.'
+      const isTooLarge = errorMsg.includes('maksimum 10MB')
+      return NextResponse.json(
+        { error: errorMsg },
+        { status: isTooLarge ? 413 : 400 }
+      )
     }
 
-    // 3. Upload to Supabase Storage
-    const arrayBuffer = await file.arrayBuffer()
+    const validatedFile = file as File
+
+    // 4. Upload to Supabase Storage
+    const arrayBuffer = await validatedFile.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
-    const fileExt = file.name.split('.').pop()
+    const fileExt = MIME_TO_EXTENSION[validatedFile.type]
     const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('business-documents')
       .upload(fileName, buffer, {
-        contentType: file.type,
+        contentType: validatedFile.type,
         duplex: 'half'
       } as any)
 

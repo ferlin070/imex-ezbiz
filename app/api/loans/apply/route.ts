@@ -1,3 +1,4 @@
+import { requireRole } from '@/lib/auth/requireRole'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { calculateLoan } from '@/lib/loanCalculator'
@@ -12,15 +13,14 @@ const loanApplicationSchema = z.object({
 })
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
   let createdApplicationId: string | null = null
+  let supabaseClient: Awaited<ReturnType<typeof createClient>> | null = null
 
   try {
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
+    const auth = await requireRole(['entrepreneur', 'admin', 'mara_officer', 'judge'])
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
+    supabaseClient = supabase
 
     // 2. Parse and validate payload
     const body = await request.json()
@@ -118,8 +118,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, applicationId: createdApplicationId })
   } catch (error: any) {
     console.error('Loan apply API exception:', error)
-    if (createdApplicationId) {
-      await supabase.from('loan_applications').delete().eq('id', createdApplicationId)
+    if (createdApplicationId && supabaseClient) {
+      await supabaseClient.from('loan_applications').delete().eq('id', createdApplicationId)
     }
     return NextResponse.json({ error: error.message || 'Ralat server semasa menghantar permohonan.' }, { status: 500 })
   }

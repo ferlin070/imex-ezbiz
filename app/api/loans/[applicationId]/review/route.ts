@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { calculateLoan } from '@/lib/loanCalculator'
 import { z } from 'zod'
@@ -17,25 +17,11 @@ interface RouteParams {
 
 export async function POST(request: Request, { params }: RouteParams) {
   const { applicationId } = await params
-  const supabase = await createClient()
 
   try {
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // 2. Verify role: admin or mara_officer
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || (profile.role !== 'mara_officer' && profile.role !== 'admin')) {
-      return NextResponse.json({ error: 'Akses dinafikan. Anda bukan pegawai MARA yang sah.' }, { status: 403 })
-    }
+    const auth = await requireRole(['mara_officer', 'admin'], 'Akses dinafikan. Anda bukan pegawai MARA yang sah.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // 3. Parse and validate review payload
     const body = await request.json()

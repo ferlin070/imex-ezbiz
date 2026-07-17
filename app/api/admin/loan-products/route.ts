@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -17,24 +17,9 @@ const loanProductSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // 2. Verify admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Akses dinafikan. Hanya admin dibenarkan.' }, { status: 403 })
-    }
+    const auth = await requireRole(['admin'], 'Akses dinafikan. Hanya admin dibenarkan.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // 3. Fetch loan products
     const { data: products, error } = await supabase
@@ -53,24 +38,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // 2. Verify admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Akses dinafikan. Hanya admin dibenarkan.' }, { status: 403 })
-    }
+    const auth = await requireRole(['admin'], 'Akses dinafikan. Hanya admin dibenarkan.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // 3. Parse and validate payload
     const body = await request.json()
@@ -109,24 +79,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // 2. Verify admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Akses dinafikan. Hanya admin dibenarkan.' }, { status: 403 })
-    }
+    const auth = await requireRole(['admin'], 'Akses dinafikan. Hanya admin dibenarkan.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // 3. Parse and validate payload
     const body = await request.json()
@@ -166,24 +121,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // 2. Verify admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Akses dinafikan. Hanya admin dibenarkan.' }, { status: 403 })
-    }
+    const auth = await requireRole(['admin'], 'Akses dinafikan. Hanya admin dibenarkan.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // 3. Parse request param
     const { searchParams } = new URL(request.url)

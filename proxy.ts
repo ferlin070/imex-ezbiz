@@ -13,9 +13,7 @@ export async function proxy(request: NextRequest) {
   const isDummy = !supabaseUrl || !anonKey || supabaseUrl.includes('dummy')
 
   let user = null
-  let role = null
-  let isMock = false
-  let supabase: any = null
+  let supabase: ReturnType<typeof createServerClient> | null = null
 
   // If we have real credentials, try real Supabase auth
   if (!isDummy) {
@@ -44,12 +42,6 @@ export async function proxy(request: NextRequest) {
       const { data: { user: supabaseUser } } = await supabase.auth.getUser()
       if (supabaseUser) {
         user = supabaseUser
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', supabaseUser.id)
-          .single()
-        role = profile?.role
       }
     } catch (err) {
       console.warn('Real Supabase auth query failed inside proxy, ignoring:', err)
@@ -57,8 +49,6 @@ export async function proxy(request: NextRequest) {
   }
 
   const url = request.nextUrl.clone()
-  const isAuthPage = url.pathname === '/login'
-  const isMaraAuthPage = url.pathname === '/mara/login'
   const isChangePasswordPage = url.pathname === '/change-password'
   const isJudgePage = url.pathname.startsWith('/vote') || url.pathname.startsWith('/ranking')
   const isDashboardPage = url.pathname.startsWith('/project')
@@ -86,53 +76,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Guard MARA pages: only allow mara_officer or admin
+  // Guard MARA pages: only allow authenticated users. Layout performs role check.
   if (isMaraPage) {
     if (!user) {
       url.pathname = '/mara/login'
       return NextResponse.redirect(url)
     }
-    if (role !== 'mara_officer' && role !== 'admin') {
-      // If entrepreneur or judge attempts to access MARA, redirect to login page
-      url.pathname = '/mara/login'
-      return NextResponse.redirect(url)
-    }
   }
 
+  // Guard protected pages
   if (!user && (isJudgePage || isDashboardPage || isAdminPage)) {
     url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  if (user && (isAuthPage || isMaraAuthPage)) {
-    // Redirect logged-in user to their respective homepage
-    if (role === 'judge') {
-      url.pathname = '/ranking/ikm-besut-2026'
-    } else if (role === 'admin') {
-      url.pathname = '/admin/events'
-    } else if (role === 'mara_officer') {
-      url.pathname = '/search'
-    } else {
-      let projectId = null
-
-      try {
-        if (supabase) {
-          const { data: project } = await supabase
-            .from('projects')
-            .select('id')
-            .eq('owner_user_id', user.id)
-            .limit(1)
-            .maybeSingle()
-          projectId = project?.id
-        }
-      } catch {}
-
-      if (projectId) {
-        url.pathname = `/project/${projectId}`
-      } else {
-        url.pathname = '/'
-      }
-    }
     return NextResponse.redirect(url)
   }
 

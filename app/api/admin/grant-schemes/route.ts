@@ -1,3 +1,4 @@
+import { requireRole } from '@/lib/auth/requireRole'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -37,24 +38,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // 2. Verify role: strictly admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Akses dinafikan. Hanya Pentadbir (Admin) dibenarkan.' }, { status: 403 })
-    }
+    const auth = await requireRole(['admin'], 'Akses dinafikan. Hanya Pentadbir (Admin) dibenarkan.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // 3. Parse and validate input
     const body = await request.json().catch(() => ({}))
@@ -90,24 +76,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // 2. Verify role: strictly admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Akses dinafikan. Hanya Pentadbir (Admin) dibenarkan.' }, { status: 403 })
-    }
+    const auth = await requireRole(['admin'], 'Akses dinafikan. Hanya Pentadbir (Admin) dibenarkan.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // 3. Parse and validate input
     const body = await request.json().catch(() => ({}))
@@ -144,24 +115,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // 2. Verify role: strictly admin
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ error: 'Akses dinafikan. Hanya Pentadbir (Admin) dibenarkan.' }, { status: 403 })
-    }
+    const auth = await requireRole(['admin'], 'Akses dinafikan. Hanya Pentadbir (Admin) dibenarkan.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // 3. Extract scheme ID from query params
     const { searchParams } = new URL(request.url)

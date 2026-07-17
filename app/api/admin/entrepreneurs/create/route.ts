@@ -1,4 +1,5 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
+import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -19,24 +20,9 @@ function generateRandomPassword(length = 10): string {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    // Auth verification
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // Role verification
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Akses dinafikan. Hanya admin boleh mendaftar usahawan.' }, { status: 403 })
-    }
+    const auth = await requireRole(['admin'], 'Akses dinafikan. Hanya admin boleh mendaftar usahawan.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     const body = await request.json()
     const parsed = entrepreneurSchema.safeParse(body)

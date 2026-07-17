@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ShieldCheck, KeyRound, Mail, AlertCircle, ArrowRight } from 'lucide-react'
@@ -8,6 +8,24 @@ import { ShieldCheck, KeyRound, Mail, AlertCircle, ArrowRight } from 'lucide-rea
 export default function MaraLoginPage() {
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+
+        if (profile && (profile.role === 'mara_officer' || profile.role === 'admin')) {
+          router.push('/search')
+        }
+      }
+    }
+    checkSession()
+  }, [supabase, router])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { calculateFeasibility } from '@/lib/feasibility'
 import { generateGrantMatches } from '@/lib/grantMatch'
@@ -9,24 +9,9 @@ export async function POST(
 ) {
   try {
     const { projectId } = await params
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
-    }
-
-    // 2. Verify role: admin or mara_officer
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || (profile.role !== 'mara_officer' && profile.role !== 'admin')) {
-      return NextResponse.json({ error: 'Akses dinafikan. Anda bukan pegawai MARA yang sah.' }, { status: 403 })
-    }
+    const auth = await requireRole(['mara_officer', 'admin'], 'Akses dinafikan. Anda bukan pegawai MARA yang sah.')
+    if (auth.error) return auth.error
+    const { user, supabase } = auth
 
     // 3. Log access in audit log (mara_access_log)
     const { error: logError } = await supabase
