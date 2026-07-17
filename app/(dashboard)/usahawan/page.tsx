@@ -97,10 +97,10 @@ export default async function UsahawanDashboard() {
             const statusConfig = statusMap[proj.status || 'submitted'] || statusMap.submitted
             
             // Calculate evaluations count and score average for this project
-            const projEvals = (evaluations || []).filter((e) => e.project_id === proj.id)
+            const projEvals = (evaluations || []).filter((e: any) => e.project_id === proj.id)
             const evalCount = projEvals.length
             const avgScore = evalCount > 0 
-              ? Math.round(projEvals.reduce((acc, curr) => acc + Number(curr.score), 0) / evalCount)
+              ? Math.round(projEvals.reduce((acc: number, curr: any) => acc + Number(curr.score), 0) / evalCount)
               : null
 
             return (

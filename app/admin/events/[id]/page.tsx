@@ -58,10 +58,10 @@ export default async function AdminEventDetailPage({
   }))
 
   const mappedProjects = (projects || []).map((p: any) => {
-    const projEvals = (evaluations || []).filter((e) => e.project_id === p.id)
+    const projEvals = (evaluations || []).filter((e: any) => e.project_id === p.id)
     const evalCount = projEvals.length
     const avgScore = evalCount > 0 
-      ? Math.round(projEvals.reduce((acc, curr) => acc + Number(curr.score), 0) / evalCount)
+      ? Math.round(projEvals.reduce((acc: number, curr: any) => acc + Number(curr.score), 0) / evalCount)
       : null
 
     return {
