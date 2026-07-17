@@ -93,7 +93,7 @@ export default async function UsahawanDashboard() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          {projects.map((proj) => {
+          {projects.map((proj: any) => {
             const statusConfig = statusMap[proj.status || 'submitted'] || statusMap.submitted
             
             // Calculate evaluations count and score average for this project
