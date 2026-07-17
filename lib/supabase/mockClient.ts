@@ -108,6 +108,16 @@ export function createMockSupabaseClient(userId: string | null) {
                 resolve({ data: updated, error: null })
                 return
               }
+              if (table === 'events' && id) {
+                const updated = mockDb.updateEvent(id, this._updatePayload)
+                resolve({ data: updated, error: null })
+                return
+              }
+              if (table === 'venues' && id) {
+                const updated = mockDb.updateVenue(id, this._updatePayload)
+                resolve({ data: updated, error: null })
+                return
+              }
               if (table === 'grant_schemes' && id) {
                 const updated = mockDb.updateGrantScheme(id, this._updatePayload)
                 resolve({ data: updated, error: null })
@@ -130,6 +140,8 @@ export function createMockSupabaseClient(userId: string | null) {
               if (table === 'scores') {
                 mockDb.submitScore(this._upsertPayload.project_id, this._upsertPayload.judge_id, this._upsertPayload.criteria_id, this._upsertPayload.score)
                 upsertData = this._upsertPayload
+              } else if (table === 'evaluations') {
+                upsertData = mockDb.submitEvaluation(this._upsertPayload.project_id, this._upsertPayload.jury_id, this._upsertPayload.score, this._upsertPayload.comment)
               } else if (table === 'ai_reports') {
                 upsertData = mockDb.upsertAiReport(this._upsertPayload.project_id, this._upsertPayload)
               } else if (table === 'grant_matches') {
@@ -145,6 +157,14 @@ export function createMockSupabaseClient(userId: string | null) {
               let insertData = null
               if (table === 'projects') {
                 insertData = mockDb.insertProject(this._insertPayload)
+              } else if (table === 'events') {
+                insertData = mockDb.insertEvent(this._insertPayload)
+              } else if (table === 'venues') {
+                insertData = mockDb.insertVenue(this._insertPayload)
+              } else if (table === 'jury_assignments') {
+                insertData = mockDb.insertJuryAssignment(this._insertPayload)
+              } else if (table === 'evaluations') {
+                insertData = mockDb.submitEvaluation(this._insertPayload.project_id, this._insertPayload.jury_id, this._insertPayload.score, this._insertPayload.comment)
               } else if (table === 'judges') {
                 const { judge } = mockDb.insertJudge(
                   this._insertPayload.name,
@@ -174,6 +194,25 @@ export function createMockSupabaseClient(userId: string | null) {
               const id = this._eq['id']
               if (table === 'projects' && id) {
                 mockDb.deleteProject(id)
+                resolve({ error: null })
+                return
+              }
+              if (table === 'events' && id) {
+                mockDb.deleteEvent(id)
+                resolve({ error: null })
+                return
+              }
+              if (table === 'venues' && id) {
+                mockDb.deleteVenue(id)
+                resolve({ error: null })
+                return
+              }
+              if (table === 'jury_assignments') {
+                const eventId = this._eq['event_id']
+                const userId = this._eq['user_id']
+                if (eventId && userId) {
+                  mockDb.deleteJuryAssignment(eventId, userId)
+                }
                 resolve({ error: null })
                 return
               }
@@ -216,7 +255,30 @@ export function createMockSupabaseClient(userId: string | null) {
             if (slug) {
               return mockDb.getEventBySlug(slug)
             }
-            return null
+            const id = this._eq['id']
+            if (id) {
+              return mockDb.getEventById(id)
+            }
+            return mockDb.getEvents()
+          }
+          if (table === 'venues') {
+            return mockDb.getVenues()
+          }
+          if (table === 'jury_assignments') {
+            const eventId = this._eq['event_id']
+            let assignments = mockDb.getJuryAssignments(eventId)
+            const userId = this._eq['user_id']
+            if (userId) {
+              assignments = assignments.filter((a) => a.user_id === userId)
+            }
+            return assignments
+          }
+          if (table === 'evaluations') {
+            const projectId = this._eq['project_id']
+            if (projectId) {
+              return mockDb.getEvaluationsByProjectId(projectId)
+            }
+            return mockDb.getEvaluations()
           }
           if (table === 'criteria') {
             const eventId = this._eq['event_id'] || 'e1111111-1111-1111-1111-111111111111'

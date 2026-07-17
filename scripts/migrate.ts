@@ -20,7 +20,8 @@ async function run() {
     '20260716000001_seed_data.sql',
     '20260716000002_mara_module.sql',
     '20260716000003_scout_schemas.sql',
-    '20260717000000_dual_track_loan.sql'
+    '20260717000000_dual_track_loan.sql',
+    '20260717000001_event_workflow.sql'
   ]
 
   try {

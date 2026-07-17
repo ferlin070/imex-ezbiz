@@ -21,24 +21,15 @@ export default function LoginPage() {
 
         if (profile) {
           if (profile.role === 'judge') {
-            router.push('/ranking/ikm-besut-2026')
+            router.push('/juror')
           } else if (profile.role === 'admin') {
             router.push('/admin/events')
           } else if (profile.role === 'mara_officer') {
             router.push('/search')
+          } else if (profile.role === 'entrepreneur') {
+            router.push('/usahawan')
           } else {
-            const { data: project } = await supabase
-              .from('projects')
-              .select('id')
-              .eq('owner_user_id', user.id)
-              .limit(1)
-              .maybeSingle()
-
-            if (project) {
-              router.push(`/project/${project.id}`)
-            } else {
-              router.push('/')
-            }
+            router.push('/')
           }
         }
       }
@@ -81,22 +72,13 @@ export default function LoginPage() {
       }
 
       if (profile.role === 'judge') {
-        router.push('/ranking/ikm-besut-2026')
+        router.push('/juror')
       } else if (profile.role === 'admin') {
         router.push('/admin/events')
+      } else if (profile.role === 'entrepreneur') {
+        router.push('/usahawan')
       } else {
-        const { data: project } = await supabase
-          .from('projects')
-          .select('id')
-          .eq('owner_user_id', user.id)
-          .limit(1)
-          .maybeSingle()
-
-        if (project) {
-          router.push(`/project/${project.id}`)
-        } else {
-          router.push('/')
-        }
+        router.push('/')
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Ralat log masuk berlaku.')

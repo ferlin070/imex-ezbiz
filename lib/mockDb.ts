@@ -1,6 +1,19 @@
 // Mock Database for IMEX AI-Biz MVP fallback mode
 // This allows the app to be fully functional locally even when Supabase URL is invalid/dummy.
 
+export interface MockEvent {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  venue?: string
+  start_date?: string
+  end_date?: string
+  status: 'draft' | 'open' | 'closed' | 'completed'
+  created_by?: string
+  created_at?: string
+}
+
 export interface MockProject {
   id: string
   event_id: string
@@ -12,6 +25,33 @@ export interface MockProject {
   mara_visible?: boolean
   state?: string
   institution?: string
+  status?: 'draft' | 'submitted' | 'shortlisted' | 'approved' | 'rejected'
+  submitted_at?: string
+  updated_at?: string
+}
+
+export interface MockJuryAssignment {
+  id: string
+  event_id: string
+  user_id: string
+  role: 'chair' | 'member' | 'observer'
+  assigned_at: string
+}
+
+export interface MockVenue {
+  id: string
+  name: string
+  description?: string
+  created_at: string
+}
+
+export interface MockEvaluation {
+  id: string
+  project_id: string
+  jury_id: string
+  score: number
+  comment?: string
+  submitted_at: string
 }
 
 export interface MockCriterion {
@@ -99,11 +139,16 @@ export interface MockAccessLog {
 }
 
 // In-memory data store mimicking the Supabase seeds
-const mockEvent = {
+const mockEvent: MockEvent = {
   id: 'e1111111-1111-1111-1111-111111111111',
   name: 'Festival Inovasi IKM Besut 2026',
   slug: 'ikm-besut-2026',
-  status: 'active',
+  status: 'open',
+  description: 'Pertandingan inovasi tahunan IKM Besut.',
+  venue: 'Dewan Besar IKM Besut',
+  start_date: new Date().toISOString(),
+  end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  created_at: new Date().toISOString()
 }
 
 const mockCriteria: MockCriterion[] = [
@@ -126,6 +171,9 @@ const mockProjects: MockProject[] = [
     mara_visible: false,
     state: 'Terengganu',
     institution: 'IKM Besut',
+    status: 'shortlisted',
+    submitted_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   },
   {
     id: 'd2222222-2222-2222-2222-222222222222',
@@ -138,6 +186,9 @@ const mockProjects: MockProject[] = [
     mara_visible: false,
     state: 'Kelantan',
     institution: 'IKM Besut',
+    status: 'submitted',
+    submitted_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   },
   {
     id: 'd3333333-3333-3333-3333-333333333333',
@@ -251,6 +302,10 @@ interface MockDbState {
   grantMatches: MockGrantMatch[]
   shortlist: MockShortlist[]
   accessLogs: MockAccessLog[]
+  events: MockEvent[]
+  venues: MockVenue[]
+  juryAssignments: MockJuryAssignment[]
+  evaluations: MockEvaluation[]
 }
 
 const globalForMockDb = global as unknown as {
@@ -268,14 +323,131 @@ if (!globalForMockDb.mockDbState) {
     grantMatches: [],
     shortlist: [],
     accessLogs: [],
+    events: [mockEvent],
+    venues: [
+      {
+        id: 'v1111111-1111-1111-1111-111111111111',
+        name: 'Dewan Besar IKM Besut',
+        description: 'Lokasi utama penjurian fizikal IMEX',
+        created_at: new Date().toISOString()
+      }
+    ],
+    juryAssignments: [
+      {
+        id: 'a1111111-1111-1111-1111-111111111111',
+        event_id: 'e1111111-1111-1111-1111-111111111111',
+        user_id: 'f1111111-1111-1111-1111-111111111111',
+        role: 'member',
+        assigned_at: new Date().toISOString()
+      }
+    ],
+    evaluations: []
   }
 }
 
 const state = globalForMockDb.mockDbState
 
 export const mockDb = {
+  getEvents: () => {
+    return state.events
+  },
   getEventBySlug: (slug: string) => {
-    return mockEvent.slug === slug ? mockEvent : null
+    return state.events.find((e) => e.slug === slug) || null
+  },
+  getEventById: (id: string) => {
+    return state.events.find((e) => e.id === id) || null
+  },
+  insertEvent: (event: Omit<MockEvent, 'id'>) => {
+    const newEvent = {
+      ...event,
+      id: `e-gen-${Math.random()}`,
+      created_at: new Date().toISOString()
+    } as MockEvent
+    state.events.push(newEvent)
+    return newEvent
+  },
+  updateEvent: (id: string, payload: Partial<MockEvent>) => {
+    const idx = state.events.findIndex((e) => e.id === id)
+    if (idx > -1) {
+      state.events[idx] = { ...state.events[idx], ...payload }
+      return state.events[idx]
+    }
+    return null
+  },
+  deleteEvent: (id: string) => {
+    state.events = state.events.filter((e) => e.id !== id)
+    state.projects = state.projects.filter((p) => p.event_id !== id)
+    state.juryAssignments = state.juryAssignments.filter((a) => a.event_id !== id)
+    return true
+  },
+  getVenues: () => {
+    return state.venues
+  },
+  insertVenue: (venue: Omit<MockVenue, 'id' | 'created_at'>) => {
+    const newVenue = {
+      ...venue,
+      id: `v-gen-${Math.random()}`,
+      created_at: new Date().toISOString()
+    }
+    state.venues.push(newVenue)
+    return newVenue
+  },
+  updateVenue: (id: string, payload: Partial<MockVenue>) => {
+    const idx = state.venues.findIndex((v) => v.id === id)
+    if (idx > -1) {
+      state.venues[idx] = { ...state.venues[idx], ...payload }
+      return state.venues[idx]
+    }
+    return null
+  },
+  deleteVenue: (id: string) => {
+    state.venues = state.venues.filter((v) => v.id !== id)
+    return true
+  },
+  getJuryAssignments: (eventId?: string) => {
+    if (eventId) {
+      return state.juryAssignments.filter((a) => a.event_id === eventId)
+    }
+    return state.juryAssignments
+  },
+  insertJuryAssignment: (assignment: Omit<MockJuryAssignment, 'id' | 'assigned_at'>) => {
+    const newAssignment = {
+      ...assignment,
+      id: `a-gen-${Math.random()}`,
+      assigned_at: new Date().toISOString()
+    } as MockJuryAssignment
+    const exists = state.juryAssignments.some(a => a.event_id === assignment.event_id && a.user_id === assignment.user_id)
+    if (!exists) {
+      state.juryAssignments.push(newAssignment)
+    }
+    return newAssignment
+  },
+  deleteJuryAssignment: (eventId: string, user_id: string) => {
+    state.juryAssignments = state.juryAssignments.filter(a => !(a.event_id === eventId && a.user_id === user_id))
+    return true
+  },
+  getEvaluationsByProjectId: (projectId: string) => {
+    return state.evaluations.filter((ev) => ev.project_id === projectId)
+  },
+  getEvaluations: () => {
+    return state.evaluations
+  },
+  submitEvaluation: (projectId: string, juryId: string, score: number, comment?: string) => {
+    const idx = state.evaluations.findIndex(e => e.project_id === projectId && e.jury_id === juryId)
+    const evalData: MockEvaluation = {
+      id: `ev-gen-${Math.random()}`,
+      project_id: projectId,
+      jury_id: juryId,
+      score,
+      comment,
+      submitted_at: new Date().toISOString()
+    }
+    if (idx > -1) {
+      state.evaluations[idx] = evalData
+    } else {
+      state.evaluations.push(evalData)
+    }
+    return evalData
   },
   getCriteriaByEventId: (eventId: string) => {
     return mockCriteria.filter((c) => c.event_id === eventId)
