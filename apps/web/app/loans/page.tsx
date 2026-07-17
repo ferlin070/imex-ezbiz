@@ -72,7 +72,7 @@ export default async function LoansPage() {
             ⚠️ Anda belum mendaftar profil perniagaan syarikat anda. Sila lengkapkan pendaftaran profil syarikat/SSM terlebih dahulu sebelum membuat semakan permohonan pembiayaan MARA.
           </p>
           <Link
-            href="/register/direct"
+            href="/usahawan"
             className="inline-block px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition"
           >
             Daftar Profil Syarikat Sekarang
