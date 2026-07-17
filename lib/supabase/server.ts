@@ -7,19 +7,13 @@ export async function createClient() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const isDummy = !url || !key || url.includes('dummy')
   
-  let mockSessionVal = process.env.MOCK_SESSION_FOR_TEST || null
-  if (!mockSessionVal) {
-    try {
-      const cookieStore = await cookies()
-      mockSessionVal = cookieStore.get('imex_mock_session')?.value
-    } catch {}
-  }
+  const mockSessionVal = process.env.MOCK_SESSION_FOR_TEST || null
 
   if (isDummy || mockSessionVal) {
     let userId = null
     if (mockSessionVal) {
       try {
-        const parsed = JSON.parse(decodeURIComponent(mockSessionVal))
+        const parsed = JSON.parse(mockSessionVal)
         userId = parsed.id
       } catch {}
     }

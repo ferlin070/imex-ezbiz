@@ -20,67 +20,36 @@ export default function MaraLoginPage() {
     setErrorMsg('')
 
     try {
-      let user = null
-      let signInError = null
-      let isMock = false
       let userRole = null
 
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        user = data.user
-        signInError = error
-      } catch (fetchErr) {
-        console.warn('Supabase auth network error, trying mock credentials fallback:', fetchErr)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error || !data.user) {
+        throw new Error('E-mel atau kata laluan salah atau tiada kebenaran akses MARA.')
       }
 
-      if (signInError || !user) {
-        // Fallback to mock session check
-        const mockUsers: Record<string, { id: string; role: 'judge' | 'entrepreneur' | 'admin' | 'mara_officer'; name: string }> = {
-          'mara1@gmail.com': { id: 'mara-officer-mock-uuid', role: 'mara_officer', name: 'Encik Tarmizi (MARA)' },
-          'admin@gmail.com': { id: 'admin-id-mock-uuid', role: 'admin', name: 'Super Admin' }
-        }
+      const user = data.user
 
-        const match = mockUsers[email]
-        if (match && password === 'password123') {
-          user = { id: match.id, email: email }
-          userRole = match.role
-          isMock = true
-          // Write mock session cookie
-          document.cookie = `imex_mock_session=${encodeURIComponent(JSON.stringify(match))}; path=/; max-age=86400; SameSite=Lax`
-        } else {
-          throw new Error('E-mel atau kata laluan salah atau tiada kebenaran akses MARA.')
-        }
-      } else {
-        // Logged in with real Supabase, fetch role
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
+      // Logged in with real Supabase, fetch role
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
 
-        if (profileError || !profile) {
-          throw new Error('Profil pengguna tidak dijumpai.')
-        }
-        userRole = profile.role
+      if (profileError || !profile) {
+        throw new Error('Profil pengguna tidak dijumpai.')
       }
+      userRole = profile.role
 
       if (user) {
         // Verify role is mara_officer or admin
         if (userRole !== 'mara_officer' && userRole !== 'admin') {
-          // Clear credentials/cookies and throw error
-          document.cookie = 'imex_mock_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
           await supabase.auth.signOut()
           throw new Error('Akses dinafikan. Halaman ini hanya dikhaskan untuk Pegawai MARA.')
-        }
-
-        // Clean real supabase if mock was used
-        if (isMock) {
-          document.cookie = `imex_mock_session=${encodeURIComponent(JSON.stringify({ id: user.id, email: user.email, role: userRole, name: 'MARA User' }))}; path=/; max-age=86400; SameSite=Lax`
-        } else {
-          document.cookie = 'imex_mock_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
         }
 
         // Redirect to search console

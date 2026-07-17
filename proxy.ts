@@ -17,19 +17,8 @@ export async function proxy(request: NextRequest) {
   let isMock = false
   let supabase: any = null
 
-  // Try reading mock cookie session first
-  const mockSessionCookie = request.cookies.get('imex_mock_session')?.value
-  if (mockSessionCookie) {
-    try {
-      const parsed = JSON.parse(decodeURIComponent(mockSessionCookie))
-      user = { id: parsed.id, email: parsed.email }
-      role = parsed.role
-      isMock = true
-    } catch {}
-  }
-
-  // If not mock session and we have real credentials, try real Supabase auth
-  if (!isDummy && !user) {
+  // If we have real credentials, try real Supabase auth
+  if (!isDummy) {
     try {
       supabase = createServerClient(
         supabaseUrl!,
@@ -112,26 +101,17 @@ export async function proxy(request: NextRequest) {
     } else {
       let projectId = null
 
-      if (isMock) {
-        // Mock entrepreneur projects
-        if (user.id === 'b1111111-1111-1111-1111-111111111111') {
-          projectId = 'd1111111-1111-1111-1111-111111111111'
-        } else if (user.id === 'b2222222-2222-2222-2222-222222222222') {
-          projectId = 'd2222222-2222-2222-2222-222222222222'
+      try {
+        if (supabase) {
+          const { data: project } = await supabase
+            .from('projects')
+            .select('id')
+            .eq('owner_user_id', user.id)
+            .limit(1)
+            .maybeSingle()
+          projectId = project?.id
         }
-      } else {
-        try {
-          if (supabase) {
-            const { data: project } = await supabase
-              .from('projects')
-              .select('id')
-              .eq('owner_user_id', user.id)
-              .limit(1)
-              .maybeSingle()
-            projectId = project?.id
-          }
-        } catch {}
-      }
+      } catch {}
 
       if (projectId) {
         url.pathname = `/project/${projectId}`

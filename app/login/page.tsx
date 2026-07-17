@@ -21,95 +21,44 @@ export default function LoginPage() {
     setErrorMsg('')
 
     try {
-      let user = null
-      let signInError = null
-      let isMock = false
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        user = data.user
-        signInError = error
-      } catch (fetchErr) {
-        console.warn('Supabase auth network error, trying mock credentials fallback:', fetchErr)
+      if (error || !data.user) {
+        throw new Error('E-mel atau kata laluan salah. Sila cuba lagi.')
       }
 
-      if (signInError || !user) {
-        // Fallback to mock session check
-        const mockUsers: Record<string, { id: string; role: 'judge' | 'entrepreneur' | 'admin'; name: string }> = {
-          'juri1@gmail.com': { id: 'a1111111-1111-1111-1111-111111111111', role: 'judge', name: 'Encik Khairul' },
-          'juri2@gmail.com': { id: 'a2222222-2222-2222-2222-222222222222', role: 'judge', name: 'Puan Zaimah' },
-          'juri3@gmail.com': { id: 'a3333333-3333-3333-3333-333333333333', role: 'judge', name: 'Dr. Firdaus' },
-          'usahawan1@gmail.com': { id: 'b1111111-1111-1111-1111-111111111111', role: 'entrepreneur', name: 'Ahmad FOCUS' },
-          'usahawan2@gmail.com': { id: 'b2222222-2222-2222-2222-222222222222', role: 'entrepreneur', name: 'Siti Food Dryer' },
-          'admin@gmail.com': { id: 'admin-id-mock-uuid', role: 'admin', name: 'Super Admin' }
-        }
+      const user = data.user
 
-        const match = mockUsers[email]
-        if (match && password === 'password123') {
-          user = { id: match.id, email: email }
-          isMock = true
-          // Write mock session cookie
-          document.cookie = `imex_mock_session=${encodeURIComponent(JSON.stringify(match))}; path=/; max-age=86400; SameSite=Lax`
-        } else {
-          throw new Error('E-mel atau kata laluan salah. Sila cuba lagi.')
-        }
+      // Fetch real profile from Supabase
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError || !profile) {
+        throw new Error('Profil pengguna tidak dijumpai.')
+      }
+
+      if (profile.role === 'judge') {
+        router.push('/ranking/ikm-besut-2026')
+      } else if (profile.role === 'admin') {
+        router.push('/admin/events')
       } else {
-        // Logged in with real Supabase, clear mock session cookie
-        document.cookie = 'imex_mock_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-      }
+        const { data: project } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('owner_user_id', user.id)
+          .limit(1)
+          .maybeSingle()
 
-      if (user) {
-        if (isMock) {
-          // Hardcoded redirects for mock users
-          const mockUsers: Record<string, { role: string; projectId?: string }> = {
-            'juri1@gmail.com': { role: 'judge' },
-            'juri2@gmail.com': { role: 'judge' },
-            'juri3@gmail.com': { role: 'judge' },
-            'usahawan1@gmail.com': { role: 'entrepreneur', projectId: 'd1111111-1111-1111-1111-111111111111' },
-            'usahawan2@gmail.com': { role: 'entrepreneur', projectId: 'd2222222-2222-2222-2222-222222222222' },
-            'admin@gmail.com': { role: 'admin' }
-          }
-          const match = mockUsers[email]
-          if (match.role === 'judge') {
-            router.push('/ranking/ikm-besut-2026')
-          } else if (match.role === 'admin') {
-            router.push('/admin/events')
-          } else {
-            router.push(`/project/${match.projectId}`)
-          }
+        if (project) {
+          router.push(`/project/${project.id}`)
         } else {
-          // Fetch real profile from Supabase
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-
-          if (profileError || !profile) {
-            throw new Error('Profil pengguna tidak dijumpai.')
-          }
-
-          if (profile.role === 'judge') {
-            router.push('/ranking/ikm-besut-2026')
-          } else if (profile.role === 'admin') {
-            router.push('/admin/events')
-          } else {
-            const { data: project } = await supabase
-              .from('projects')
-              .select('id')
-              .eq('owner_user_id', user.id)
-              .limit(1)
-              .maybeSingle()
-
-            if (project) {
-              router.push(`/project/${project.id}`)
-            } else {
-              router.push('/')
-            }
-          }
+          router.push('/')
         }
       }
     } catch (err: any) {
@@ -223,21 +172,6 @@ export default function LoginPage() {
             )}
           </button>
         </form>
-
-        {/* Mock accounts list for testing */}
-        <div className="mt-8 pt-6 border-t border-white/5 text-center">
-          <p className="text-xs text-gray-500 font-semibold mb-2">AKUN PENGUJIAN MVP (Kata laluan: password123)</p>
-          <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-400">
-            <div className="bg-navy-900/40 p-1.5 rounded border border-white/5">
-              <span className="text-cyan-400 font-bold block">JURI:</span>
-              juri1@gmail.com
-            </div>
-            <div className="bg-navy-900/40 p-1.5 rounded border border-white/5">
-              <span className="text-cyan-400 font-bold block">USAHAWAN:</span>
-              usahawan1@gmail.com
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )
