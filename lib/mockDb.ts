@@ -401,7 +401,7 @@ export const mockDb = {
     }
     return true
   },
-  insertProfile: (id: string, name: string, email: string, role: string) => {
+  insertProfile: (id: string, name: string, email: string, role: MockProfile['role']) => {
     const newProfile: MockProfile = {
       id,
       email,
