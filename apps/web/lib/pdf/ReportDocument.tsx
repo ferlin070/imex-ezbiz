@@ -1,136 +1,225 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
-// Create stylesheet for the PDF layout
+const MARA_RED = '#8B1A1A'
+const MARA_GOLD = '#D4A017'
+const MARA_DARK = '#5C1010'
+
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    padding: 35,
+    paddingBottom: 50,
     backgroundColor: '#ffffff',
     fontFamily: 'Helvetica',
-    fontSize: 10,
-    color: '#1e293b',
+    fontSize: 9,
+    color: '#2d2d2d',
+  },
+  topBar: {
+    backgroundColor: MARA_RED,
+    margin: -35,
+    marginBottom: 20,
+    padding: '12 35',
+  },
+  topBarText: {
+    color: '#ffffff',
+    fontSize: 8,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
   headerContainer: {
     borderBottomWidth: 2,
-    borderBottomColor: '#0ea5e9',
-    paddingBottom: 15,
-    marginBottom: 20,
+    borderBottomColor: MARA_GOLD,
+    paddingBottom: 12,
+    marginBottom: 15,
   },
-  appTitle: {
-    fontSize: 10,
+  docTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#0ea5e9',
+    color: MARA_DARK,
+    marginTop: 3,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 20,
+  },
+  metaLabel: {
+    fontSize: 7,
+    color: '#888',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  docTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#0f172a',
-    marginTop: 5,
-  },
-  metaGrid: {
-    flexDirection: 'row',
-    marginTop: 10,
-    justifyContent: 'space-between',
+  metaValue: {
     fontSize: 9,
-    color: '#64748b',
+    color: '#444',
+    marginTop: 1,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#0f172a',
-    backgroundColor: '#f1f5f9',
-    padding: 5,
-    marginTop: 15,
+    color: '#ffffff',
+    backgroundColor: MARA_RED,
+    padding: '6 10',
+    marginTop: 14,
     marginBottom: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#0ea5e9',
-    textTransform: 'uppercase',
   },
-  grid: {
+  grid2: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -5,
   },
   col2: {
     width: '50%',
-    padding: 5,
+    padding: 4,
   },
   card: {
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 4,
-    padding: 10,
-    height: '100%',
+    borderColor: '#ddd',
+    padding: 8,
+    minHeight: 70,
   },
   cardTitle: {
     fontWeight: 'bold',
-    fontSize: 9,
-    color: '#0f172a',
+    fontSize: 8,
+    color: MARA_DARK,
     marginBottom: 4,
     textTransform: 'uppercase',
+    borderBottomWidth: 1,
+    borderBottomColor: MARA_GOLD,
+    paddingBottom: 3,
+  },
+  cardTitleGreen: {
+    fontWeight: 'bold',
+    fontSize: 8,
+    color: '#1a7d36',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a7d36',
+    paddingBottom: 3,
+  },
+  cardTitleRed: {
+    fontWeight: 'bold',
+    fontSize: 8,
+    color: '#b91c1c',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    borderBottomWidth: 1,
+    borderBottomColor: '#b91c1c',
+    paddingBottom: 3,
+  },
+  cardTitleBlue: {
+    fontWeight: 'bold',
+    fontSize: 8,
+    color: '#0369a1',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    borderBottomWidth: 1,
+    borderBottomColor: '#0369a1',
+    paddingBottom: 3,
+  },
+  cardTitleOrange: {
+    fontWeight: 'bold',
+    fontSize: 8,
+    color: '#c2410c',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    borderBottomWidth: 1,
+    borderBottomColor: '#c2410c',
+    paddingBottom: 3,
   },
   bulletItem: {
     flexDirection: 'row',
-    marginBottom: 4,
-    paddingRight: 10,
+    marginBottom: 3,
+    paddingRight: 4,
   },
   bulletDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0ea5e9',
-    marginRight: 6,
-    marginTop: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginRight: 5,
+    marginTop: 4,
+  },
+  bulletDotGreen: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#1a7d36',
+    marginRight: 5,
+    marginTop: 4,
+  },
+  bulletDotRed: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#b91c1c',
+    marginRight: 5,
+    marginTop: 4,
+  },
+  bulletDotBlue: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#0369a1',
+    marginRight: 5,
+    marginTop: 4,
+  },
+  bulletDotOrange: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#c2410c',
+    marginRight: 5,
+    marginTop: 4,
   },
   bulletText: {
-    fontSize: 9,
-    color: '#334155',
-    lineHeight: 1.3,
+    fontSize: 8,
+    color: '#444',
+    lineHeight: 1.35,
+    flex: 1,
   },
   feasibilityBox: {
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#fafafa',
-    borderRadius: 6,
-    padding: 15,
+    borderColor: MARA_GOLD,
+    backgroundColor: '#fefcf0',
+    borderRadius: 4,
+    padding: '12 15',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   scoreValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#0ea5e9',
+    color: MARA_RED,
   },
   tierLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: MARA_DARK,
     marginTop: 2,
+  },
+  col3: {
+    width: '33.3%',
+    padding: 4,
   },
   pitchBox: {
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#f8fafc',
+    borderColor: MARA_GOLD,
+    backgroundColor: '#fefcf0',
     borderRadius: 4,
     padding: 10,
-    fontStyle: 'italic',
     lineHeight: 1.4,
   },
   footer: {
-    position: 'absolute',
-    bottom: 25,
-    left: 40,
-    right: 40,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    paddingTop: 10,
+    borderTopColor: MARA_GOLD,
+    paddingTop: 8,
+    marginTop: 20,
     textAlign: 'center',
-    fontSize: 8,
-    color: '#94a3b8',
+    fontSize: 7,
+    color: '#999',
   },
 })
 
@@ -172,23 +261,35 @@ export default function ReportDocument({ project, report }: ReportDocumentProps)
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={styles.page} wrap>
+        {/* Top Bar */}
+        <View style={styles.topBar}>
+          <Text style={styles.topBarText}>IMEX AI-Biz — Laporan Komersial Inovasi</Text>
+        </View>
+
         {/* Header */}
         <View style={styles.headerContainer}>
-          <Text style={styles.appTitle}>IMEX AI-Biz — Laporan Komersial Inovasi</Text>
           <Text style={styles.docTitle}>{project.title}</Text>
-          
-          <View style={styles.metaGrid}>
-            <Text>Kategori: {project.category || 'Umum'}</Text>
-            <Text>Ahli: {project.team_members?.join(', ') || 'Tiada'}</Text>
-            <Text>Tarikh Jana: {formattedDate}</Text>
+          <View style={styles.metaRow}>
+            <View>
+              <Text style={styles.metaLabel}>Kategori</Text>
+              <Text style={styles.metaValue}>{project.category || 'Umum'}</Text>
+            </View>
+            <View>
+              <Text style={styles.metaLabel}>Tarikh Jana</Text>
+              <Text style={styles.metaValue}>{formattedDate}</Text>
+            </View>
+            <View>
+              <Text style={styles.metaLabel}>Ahli Pasukan</Text>
+              <Text style={styles.metaValue}>{project.team_members?.join(', ') || 'Tiada'}</Text>
+            </View>
           </View>
         </View>
 
         {/* Section 1: Feasibility Score */}
         <View style={styles.feasibilityBox}>
           <View>
-            <Text style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase' }}>Kelayakan Komersial Projek</Text>
+            <Text style={{ fontSize: 8, color: '#888', textTransform: 'uppercase', letterSpacing: 1 }}>Kelayakan Komersial Projek</Text>
             <Text style={styles.tierLabel}>Tahap: {report.feasibility_tier}</Text>
           </View>
           <Text style={styles.scoreValue}>{report.feasibility_score}%</Text>
@@ -196,53 +297,49 @@ export default function ReportDocument({ project, report }: ReportDocumentProps)
 
         {/* Section 2: SWOT Analysis */}
         <Text style={styles.sectionTitle}>1. Analisis SWOT Perniagaan</Text>
-        <View style={styles.grid}>
-          {/* Strengths */}
+        <View style={styles.grid2} wrap={false}>
           <View style={styles.col2}>
             <View style={styles.card}>
-              <Text style={[styles.cardTitle, { color: '#16a34a' }]}>Kekuatan (Strengths)</Text>
+              <Text style={styles.cardTitleGreen}>Kekuatan (Strengths)</Text>
               {(report.swot.strengths || []).map((item, idx) => (
                 <View key={idx} style={styles.bulletItem}>
-                  <View style={[styles.bulletDot, { backgroundColor: '#16a34a' }]} />
+                  <View style={styles.bulletDotGreen} />
                   <Text style={styles.bulletText}>{item}</Text>
                 </View>
               ))}
             </View>
           </View>
-
-          {/* Weaknesses */}
           <View style={styles.col2}>
             <View style={styles.card}>
-              <Text style={[styles.cardTitle, { color: '#dc2626' }]}>Kelemahan (Weaknesses)</Text>
+              <Text style={styles.cardTitleRed}>Kelemahan (Weaknesses)</Text>
               {(report.swot.weaknesses || []).map((item, idx) => (
                 <View key={idx} style={styles.bulletItem}>
-                  <View style={[styles.bulletDot, { backgroundColor: '#dc2626' }]} />
+                  <View style={styles.bulletDotRed} />
                   <Text style={styles.bulletText}>{item}</Text>
                 </View>
               ))}
             </View>
           </View>
+        </View>
 
-          {/* Opportunities */}
-          <View style={[styles.col2, { marginTop: 10, width: '50%', padding: 5 }]}>
+        <View style={styles.grid2} wrap={false}>
+          <View style={styles.col2}>
             <View style={styles.card}>
-              <Text style={[styles.cardTitle, { color: '#0ea5e9' }]}>Peluang (Opportunities)</Text>
+              <Text style={styles.cardTitleBlue}>Peluang (Opportunities)</Text>
               {(report.swot.opportunities || []).map((item, idx) => (
                 <View key={idx} style={styles.bulletItem}>
-                  <View style={[styles.bulletDot, { backgroundColor: '#0ea5e9' }]} />
+                  <View style={styles.bulletDotBlue} />
                   <Text style={styles.bulletText}>{item}</Text>
                 </View>
               ))}
             </View>
           </View>
-
-          {/* Threats */}
-          <View style={[styles.col2, { marginTop: 10, width: '50%', padding: 5 }]}>
+          <View style={styles.col2}>
             <View style={styles.card}>
-              <Text style={[styles.cardTitle, { color: '#ea580c' }]}>Ancaman (Threats)</Text>
+              <Text style={styles.cardTitleOrange}>Ancaman (Threats)</Text>
               {(report.swot.threats || []).map((item, idx) => (
                 <View key={idx} style={styles.bulletItem}>
-                  <View style={[styles.bulletDot, { backgroundColor: '#ea580c' }]} />
+                  <View style={styles.bulletDotOrange} />
                   <Text style={styles.bulletText}>{item}</Text>
                 </View>
               ))}
@@ -252,37 +349,32 @@ export default function ReportDocument({ project, report }: ReportDocumentProps)
 
         {/* Section 3: Actionable Blueprint */}
         <Text style={styles.sectionTitle}>2. Blueprint Tindakan Komersial</Text>
-        <View style={styles.grid}>
-          {/* Technical */}
-          <View style={{ width: '33.3%', padding: 5 }}>
+        <View style={styles.grid2} wrap={false}>
+          <View style={styles.col3}>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Teknikal</Text>
               {(report.blueprint.technical || []).map((item, idx) => (
-                <Text key={idx} style={[styles.bulletText, { marginBottom: 6 }]}>
+                <Text key={idx} style={[styles.bulletText, { marginBottom: 4 }]}>
                   {idx + 1}. {item}
                 </Text>
               ))}
             </View>
           </View>
-
-          {/* Marketing */}
-          <View style={{ width: '33.3%', padding: 5 }}>
+          <View style={styles.col3}>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Pemasaran</Text>
               {(report.blueprint.marketing || []).map((item, idx) => (
-                <Text key={idx} style={[styles.bulletText, { marginBottom: 6 }]}>
+                <Text key={idx} style={[styles.bulletText, { marginBottom: 4 }]}>
                   {idx + 1}. {item}
                 </Text>
               ))}
             </View>
           </View>
-
-          {/* Financial */}
-          <View style={{ width: '33.3%', padding: 5 }}>
+          <View style={styles.col3}>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Kewangan</Text>
               {(report.blueprint.financial || []).map((item, idx) => (
-                <Text key={idx} style={[styles.bulletText, { marginBottom: 6 }]}>
+                <Text key={idx} style={[styles.bulletText, { marginBottom: 4 }]}>
                   {idx + 1}. {item}
                 </Text>
               ))}
@@ -293,16 +385,16 @@ export default function ReportDocument({ project, report }: ReportDocumentProps)
         {/* Section 4: Investor Pitch Script */}
         <Text style={styles.sectionTitle}>3. Skrip Pitching Pelabur (60 Saat)</Text>
         <View style={styles.pitchBox}>
-          <Text style={{ fontSize: 9, lineHeight: 1.4, color: '#334155' }}>
+          <Text style={{ fontSize: 9, lineHeight: 1.5, color: '#444' }}>
             {report.pitch_script}
           </Text>
         </View>
 
         {/* Section 5: Financing & Grants */}
         <Text style={styles.sectionTitle}>4. Nota Kelayakan Geran & Pembiayaan</Text>
-        <View style={{ gap: 6 }}>
+        <View style={styles.pitchBox}>
           <Text style={styles.bulletText}>
-            <Text style={{ fontWeight: 'bold', color: '#0f172a' }}>MARA: </Text>
+            <Text style={{ fontWeight: 'bold', color: MARA_RED }}>MARA: </Text>
             {report.grant_notes.mara}
           </Text>
         </View>
