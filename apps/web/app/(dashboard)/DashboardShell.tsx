@@ -47,6 +47,7 @@ export default function DashboardShell({ profile, children }: DashboardShellProp
   if (profile.role === 'entrepreneur') {
     menuItems.push(
       { name: 'Konsol Kelayakan', href: '/usahawan', icon: LayoutDashboard },
+      { name: 'Profil Syarikat', href: '/usahawan/syarikat', icon: Landmark },
       { name: 'Skim Pembiayaan', href: '/loans', icon: CreditCard },
       { name: 'Profil & Tetapan', href: '/tetapan', icon: Settings }
     )

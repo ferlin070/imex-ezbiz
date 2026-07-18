@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
-import { Plus, Landmark, AlertCircle, FileText, ArrowRight, ShieldAlert, CheckCircle, HelpCircle, Edit2, FileCheck } from 'lucide-react'
+import { Plus, Landmark, AlertCircle, FileText, ArrowRight, ShieldAlert, CheckCircle, HelpCircle, Edit2, FileCheck, Building2, AlertTriangle } from 'lucide-react'
 
 
 export const dynamic = 'force-dynamic'
@@ -19,13 +19,21 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // 2. Fetch all projects (Business profiles)
+  // 2. Fetch all projects (products/innovations)
   const { data: projects } = await supabase
     .from('projects')
     .select('*, business_profiles(*)')
     .eq('owner_user_id', user.id)
     .order('created_at', { ascending: false })
 
+  // 2b. Fasa B: Check if company profile exists (1:1 per user)
+  const { data: companyProfile } = await supabase
+    .from('company_profiles')
+    .select('id, business_name, owner_full_name')
+    .eq('owner_user_id', user.id)
+    .maybeSingle()
+
+  const hasCompanyProfile = !!companyProfile
   const hasProjects = projects && projects.length > 0
   
   // Find which project to edit/show in form
@@ -50,29 +58,25 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
     applications = data || []
   }
 
-  // 4. Server Action for saving profile and seeding documents
+  // 4. Server Action: Save product/innovation (product fields only)
+  //    Company fields are stored in company_profiles — NOT repeated here.
   async function handleSaveProfile(formData: FormData) {
     'use server'
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const businessName = formData.get('businessName') as string
-    const description = formData.get('description') as string
-    const category = formData.get('category') as string
-    const ssmNumber = formData.get('ssmNumber') as string
-    const ownerFullName = formData.get('ownerFullName') as string
-    const ownerIcNumber = formData.get('ownerIcNumber') as string
-    const ownerAge = parseInt(formData.get('ownerAge') as string) || 30
-    const phone = formData.get('phone') as string
-    const isBumiputera = formData.get('isBumiputera') === 'true'
-    const operatingSince = formData.get('operatingSince') as string || '2023-01-01'
+    const businessName    = formData.get('businessName') as string
+    const description     = formData.get('description') as string
+    const category        = formData.get('category') as string
+    const fundingRequested = parseInt(formData.get('fundingRequested') as string) || 10000
+    const targetMarket    = formData.get('targetMarket') as string
+    const usp             = formData.get('usp') as string
     const targetProjectId = formData.get('targetProjectId') as string
 
     let projectId = targetProjectId || null
 
     if (!projectId) {
-      // Create project
       const { data: newProj, error } = await supabase
         .from('projects')
         .insert({
@@ -83,54 +87,28 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
         })
         .select()
         .single()
-      
+
       if (error || !newProj) return
       projectId = newProj.id
     } else {
-      // Update project
       await supabase
         .from('projects')
-        .update({
-          title: businessName,
-          description,
-          category
-        })
+        .update({ title: businessName, description, category })
         .eq('id', projectId)
     }
 
-    // Upsert business profile
-    const { error: profileErr } = await supabase
+    // Upsert business profile — product-specific fields only
+    // Company fields (SSM, IC, phone) come from company_profiles, not repeated here
+    await supabase
       .from('business_profiles')
       .upsert({
         project_id: projectId,
         business_name: businessName,
-        ssm_number: ssmNumber,
-        ssm_registered: true,
-        entity_type: 'milikan_tunggal',
-        operating_since: operatingSince,
-        owner_full_name: ownerFullName,
-        owner_ic_number: ownerIcNumber,
-        is_bumiputera: isBumiputera,
-        owner_age: ownerAge,
-        phone: phone,
+        target_market: targetMarket,
+        unique_selling_point: usp,
+        funding_requested_myr: fundingRequested,
         business_stage: 'operasi_baru',
-        funding_requested_myr: 10000
       }, { onConflict: 'project_id' })
-
-    // Automatically seed compulsory checking documents
-    const { data: docs } = await supabase
-      .from('business_documents')
-      .select('id')
-      .eq('project_id', projectId)
-
-    if (!docs || docs.length === 0) {
-      await supabase
-        .from('business_documents')
-        .insert([
-          { project_id: projectId, doc_type: 'ssm_cert', storage_path: '/documents/ssm_cert.pdf' },
-          { project_id: projectId, doc_type: 'business_plan', storage_path: '/documents/business_plan.pdf' }
-        ])
-    }
 
     revalidatePath('/usahawan')
   }
@@ -197,13 +175,46 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Left Column: Profile Form / Details */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-850 space-y-4">
+
+        {/* Left Column: Company Link + Product Form */}
+        <div className="lg:col-span-1 space-y-4">
+
+          {/* Company Profile check banner / link */}
+          {!hasCompanyProfile ? (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-xs font-bold text-amber-300">Profil Syarikat Belum Diisi</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Lengkapkan maklumat syarikat dahulu sebelum mendaftar produk baru.</p>
+              </div>
+              <Link
+                href="/usahawan/syarikat"
+                className="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-black rounded-lg text-[11px] transition"
+              >
+                Isi Sekarang
+              </Link>
+            </div>
+          ) : (
+            <Link
+              href="/usahawan/syarikat"
+              className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 hover:border-emerald-500/40 transition group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-emerald-300">Profil Syarikat</p>
+                <p className="text-[10px] text-slate-500 truncate">{companyProfile?.business_name}</p>
+              </div>
+              <Edit2 className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition" />
+            </Link>
+          )}
+
+          <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-teal-400" />
-                {activeProject ? 'Kemaskini Profil Produk' : 'Daftar Produk & Inovasi Baru'}
+                {activeProject ? 'Kemaskini Produk' : 'Daftar Produk / Inovasi Baru'}
               </h2>
               {activeProject && (
                 <span className="text-[10px] font-bold text-teal-400 bg-teal-400/10 border border-teal-500/20 px-2 py-0.5 rounded uppercase">
@@ -216,138 +227,83 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
               <input type="hidden" name="targetProjectId" value={activeProject?.id || ''} />
 
               <div>
-                <label className="block text-slate-400 mb-1">Nama Syarikat / Perniagaan</label>
+                <label className="block text-slate-400 mb-1">Nama Produk / Inovasi <span className="text-rose-400">*</span></label>
                 <input
-                  type="text"
-                  name="businessName"
-                  required
-                  defaultValue={activeProject?.business_profiles?.business_name || ''}
+                  type="text" name="businessName" required
+                  defaultValue={activeProject?.business_profiles?.business_name || activeProject?.title || ''}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
-                  placeholder="e.g. Indah Cipta Sdn Bhd"
+                  placeholder="e.g. Sos Cili Premium Organik"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Nombor Pendaftaran SSM</label>
-                <input
-                  type="text"
-                  name="ssmNumber"
-                  required
-                  defaultValue={activeProject?.business_profiles?.ssm_number || ''}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
-                  placeholder="e.g. 202601019999 (1234567-X)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">Penerangan Bisnes / Produk / Inovasi</label>
+                <label className="block text-slate-400 mb-1">Penerangan Produk / Inovasi</label>
                 <textarea
                   name="description"
                   defaultValue={activeProject?.description || ''}
-                  rows={2}
+                  rows={3}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500 resize-none"
-                  placeholder="Penerangan ringkas operasi bisnes..."
+                  placeholder="Penerangan ringkas produk/inovasi anda..."
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-slate-400 mb-1">Kategori Sektor</label>
-                  <input
-                    type="text"
+                  <select
                     name="category"
-                    defaultValue={activeProject?.category || 'Makanan'}
+                    defaultValue={activeProject?.category || 'Makanan & Minuman'}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
-                  />
+                  >
+                    {['Makanan & Minuman','Pertanian','Kraftangan','Fesyen & Tekstil',
+                      'Teknologi','Perkhidmatan','Pelancongan','Pendidikan','Kesihatan','Lain-lain'].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1">Tarikh Daftar SSM</label>
+                  <label className="block text-slate-400 mb-1">Pembiayaan Dipohon (RM)</label>
                   <input
-                    type="date"
-                    name="operatingSince"
-                    defaultValue={activeProject?.business_profiles?.operating_since || '2023-01-01'}
+                    type="number" name="fundingRequested" min={1000} max={500000}
+                    defaultValue={activeProject?.business_profiles?.funding_requested_myr || 10000}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
                   />
                 </div>
               </div>
 
-              <div className="border-t border-slate-850 pt-4 space-y-4">
-                <h3 className="font-bold text-slate-300">Maklumat Pemilik Asal</h3>
-                <div>
-                  <label className="block text-slate-400 mb-1">Nama Penuh Pemilik</label>
-                  <input
-                    type="text"
-                    name="ownerFullName"
-                    required
-                    defaultValue={activeProject?.business_profiles?.owner_full_name || ''}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
-                    placeholder="Sama seperti dalam IC"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-slate-400 mb-1">No. Kad Pengenalan</label>
-                    <input
-                      type="text"
-                      name="ownerIcNumber"
-                      required
-                      defaultValue={activeProject?.business_profiles?.owner_ic_number || ''}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
-                      placeholder="e.g. 900101115555"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1">Umur Pemilik</label>
-                    <input
-                      type="number"
-                      name="ownerAge"
-                      required
-                      defaultValue={activeProject?.business_profiles?.owner_age || '30'}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-slate-400 mb-1">No. Telefon Bimbit</label>
-                    <input
-                      type="text"
-                      name="phone"
-                      required
-                      defaultValue={activeProject?.business_profiles?.phone || ''}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
-                      placeholder="e.g. 0123456789"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1">Status Bumiputera</label>
-                    <select
-                      name="isBumiputera"
-                      defaultValue={activeProject?.business_profiles?.is_bumiputera?.toString() || 'true'}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
-                    >
-                      <option value="true">Bumiputera</option>
-                      <option value="false">Non-Bumiputera</option>
-                    </select>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-slate-400 mb-1">Sasaran Pasaran</label>
+                <input
+                  type="text" name="targetMarket"
+                  defaultValue={activeProject?.business_profiles?.target_market || ''}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
+                  placeholder="e.g. Ibu bapa urban usia 25-45 tahun"
+                />
               </div>
 
-              {/* Mock Upload Banner */}
-              <div className="p-3 bg-slate-950 border border-slate-800 text-[10px] text-slate-500 rounded-xl space-y-1.5">
-                <span className="font-bold text-slate-400 block">Dokumen Compulsory Disimulasikan:</span>
-                <span className="flex items-center gap-1"><FileCheck className="w-3.5 h-3.5 text-teal-400" /> Sijil Pendaftaran SSM (ssm_cert.pdf)</span>
-                <span className="flex items-center gap-1"><FileCheck className="w-3.5 h-3.5 text-teal-400" /> Kertas Rancangan Perniagaan (business_plan.pdf)</span>
+              <div>
+                <label className="block text-slate-400 mb-1">Kelebihan Unik (USP)</label>
+                <input
+                  type="text" name="usp"
+                  defaultValue={activeProject?.business_profiles?.unique_selling_point || ''}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
+                  placeholder="e.g. Bahan organik tempatan bersijil Halal"
+                />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-teal-400 hover:bg-teal-300 text-slate-950 font-bold rounded-lg transition"
+                disabled={!hasCompanyProfile}
+                className="w-full py-2.5 bg-teal-400 hover:bg-teal-300 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-bold rounded-lg transition text-xs"
               >
-                {activeProject ? 'Kemaskini Produk / Inovasi' : 'Daftar Produk / Inovasi'}
+                {activeProject ? 'Kemaskini Produk' : 'Daftar Produk / Inovasi'}
               </button>
+
+              {!hasCompanyProfile && (
+                <p className="text-[10px] text-amber-400 text-center">
+                  ⚠️ Sila isi <Link href="/usahawan/syarikat" className="underline">Profil Syarikat</Link> dahulu
+                </p>
+              )}
             </form>
           </div>
         </div>
@@ -408,7 +364,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                         Analisis SWOT
                       </Link>
                       <Link
-                        href={`/loans/apply/7bc6b4b4-02ba-4da8-963d-4c748c089cb1?amount=50000&tenure=60`}
+                        href={`/loans?projectId=${p.id}`}
                         className="inline-flex items-center justify-center gap-1 px-3.5 py-2 text-xs font-black text-slate-900 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 rounded-xl transition shadow-sm shadow-teal-500/20"
                       >
                         <ArrowRight className="w-3.5 h-3.5" />
