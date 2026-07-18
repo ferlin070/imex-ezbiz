@@ -82,6 +82,8 @@ export default function ProjectDashboardClient({
   const supabase = createClient()
 
   const [report, setReport] = useState<Report | null>(initialReport)
+  const [displayScore, setDisplayScore] = useState(feasibilityResult.score)
+  const [displayTier, setDisplayTier] = useState(feasibilityResult.tier)
   const [generating, setGenerating] = useState(false)
   const [genStep, setGenStep] = useState(0)
   const [countdown, setCountdown] = useState(0)
@@ -159,6 +161,8 @@ export default function ProjectDashboardClient({
 
       const data = await res.json()
       setReport(data.report)
+      setDisplayScore(data.report.feasibility_score)
+      setDisplayTier(data.report.feasibility_tier)
       setCountdown(30)
     } catch (err: any) {
       const msg = err.message || ''
@@ -176,7 +180,7 @@ export default function ProjectDashboardClient({
 
   // Safe helper to map feasibility status for MARA focus
   const getGrantMapping = () => {
-    const score = feasibilityResult.score
+    const score = displayScore
 
     if (score >= 80) {
       return [
@@ -427,7 +431,7 @@ export default function ProjectDashboardClient({
           /* Empty state - CTA to generate report */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1 flex flex-col gap-6">
-              <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} scoreSource={project.score_source} />
+              <FeasibilityGauge score={displayScore} tier={displayTier} scoreSource={project.score_source} />
               {renderCriteriaBreakdown()}
               {renderConsentCard()}
             </div>
@@ -458,7 +462,7 @@ export default function ProjectDashboardClient({
             
             {/* Left: Gauge + Grants */}
             <div className="md:col-span-1 flex flex-col gap-6">
-              <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} scoreSource={project.score_source} />
+              <FeasibilityGauge score={displayScore} tier={displayTier} scoreSource={project.score_source} />
               {renderCriteriaBreakdown()}
               {renderConsentCard()}
 
