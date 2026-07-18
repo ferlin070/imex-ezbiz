@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   User,
-  Landmark
+  Landmark,
+  Settings
 } from 'lucide-react'
 
 interface Profile {
@@ -46,11 +47,13 @@ export default function DashboardShell({ profile, children }: DashboardShellProp
   if (profile.role === 'entrepreneur') {
     menuItems.push(
       { name: 'Konsol Kelayakan', href: '/usahawan', icon: LayoutDashboard },
-      { name: 'Skim Pembiayaan', href: '/loans', icon: CreditCard }
+      { name: 'Skim Pembiayaan', href: '/loans', icon: CreditCard },
+      { name: 'Profil & Tetapan', href: '/tetapan', icon: Settings }
     )
   } else if (profile.role === 'admin' || profile.role === 'mara_officer') {
     menuItems.push(
-      { name: 'Konsol Pegawai', href: '/pegawai', icon: Landmark }
+      { name: 'Konsol Pegawai', href: '/pegawai', icon: Landmark },
+      { name: 'Profil & Tetapan', href: '/tetapan', icon: Settings }
     )
   }
 
