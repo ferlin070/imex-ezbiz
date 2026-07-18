@@ -1,48 +1,48 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Landmark, CheckCircle, XCircle, AlertTriangle, LogOut, ShieldAlert } from 'lucide-react'
-import Link from 'next/link'
+import { Landmark, ShieldAlert, CheckCircle, AlertTriangle, XCircle } from 'lucide-react'
+import LogoutButton from '@/components/LogoutButton'
 
 export const dynamic = 'force-dynamic'
 
-export default async function PegawaiPage() {
+export default async function PegawaiDashboard() {
   const supabase = await createClient()
 
   // 1. Auth check
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
     redirect('/login')
   }
 
-  // 2. Role check — only staff (admin, mara_officer) can access
+  // 2. Role check
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, name')
+    .select('name, role')
     .eq('id', user.id)
     .single()
 
-  if (!profile || (profile.role !== 'admin' && profile.role !== 'mara_officer')) {
+  if (!profile || (profile.role !== 'mara_officer' && profile.role !== 'admin')) {
     redirect('/login')
   }
 
-  // 3. Fetch all loan applications with project and profile details
+  // 3. Fetch all loan applications
   const { data: applications } = await supabase
     .from('loan_applications')
     .select(`
       id,
       requested_amount_myr,
       requested_tenure_months,
+      status,
+      created_at,
       eligibility_status,
       eligibility_output,
       ai_action_plan,
       was_blocked_by_guardrail,
-      status,
-      created_at,
-      loan_product:loan_products(name),
-      project:projects(
+      loan_product:loan_product_id ( name ),
+      project:project_id (
         title,
-        owner:profiles(name, email),
-        business_profile:business_profiles(
+        owner:owner_user_id ( name, email ),
+        business_profile:business_profiles (
           business_name,
           ssm_number,
           owner_full_name,
@@ -56,7 +56,7 @@ export default async function PegawaiPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 relative overflow-hidden">
-      {/* Glow background */}
+      {/* Glow background with corporate MARA gold */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-mara-gold/5 blur-[120px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto space-y-8 z-10 relative">
@@ -74,12 +74,7 @@ export default async function PegawaiPage() {
               <span className="text-xs text-slate-400 block font-medium">Pegawai: {profile.name}</span>
               <span className="text-[10px] bg-mara-red/10 border border-mara-red/20 text-mara-red px-2 py-0.5 rounded font-bold uppercase tracking-wider">MARA Officer</span>
             </div>
-            <Link 
-              href="/login" 
-              className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition"
-            >
-              <LogOut className="w-5 h-5" />
-            </Link>
+            <LogoutButton />
           </div>
         </div>
 
@@ -184,7 +179,7 @@ export default async function PegawaiPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* Rules Engine Output */}
                       <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hasil Semakan Rules Engine</h4>
+                        <h4 className="text-xs font-bold text-slate-400 tracking-wider uppercase">Hasil Semakan Rules Engine</h4>
                         <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900 space-y-2.5">
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Had Umur Pemilik (18 - 60):</span>
@@ -222,7 +217,7 @@ export default async function PegawaiPage() {
                       {/* AI Advisor Plan */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Syor & Pelan Tindakan AI</h4>
+                          <h4 className="text-xs font-bold text-slate-400 tracking-wider uppercase">Syor & Pelan Tindakan AI</h4>
                           {app.was_blocked_by_guardrail && (
                             <span className="flex items-center gap-1 text-[9px] bg-rose-500/10 border border-rose-500/20 text-rose-400 px-2 py-0.5 rounded font-black">
                               <ShieldAlert className="w-3 h-3" />
