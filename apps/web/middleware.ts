@@ -28,7 +28,8 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  // Skip auth for non-Supabase environments (dummy URL = local mock mode)
+  // Skip middleware auth check if Supabase isn't configured; the page-level
+  // client (lib/supabase/server.ts) will throw a clear config error instead.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('dummy')) {

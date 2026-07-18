@@ -116,6 +116,17 @@ export async function POST(request: Request) {
       )
       .eq('project_id', projectId)
       .maybeSingle()
+      .returns<{
+        business_name: string | null
+        entity_type: string | null
+        business_stage: string | null
+        funding_requested_myr: number | null
+        target_market: string | null
+        unique_selling_point: string | null
+        is_bumiputera: boolean | null
+        owner_age: number | null
+        monthly_revenue_range: string | null
+      }>()
 
     const { data: loanApp } = await supabase
       .from('loan_applications')
@@ -126,6 +137,12 @@ export async function POST(request: Request) {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
+      .returns<{
+        eligibility_status: string | null
+        eligibility_output: unknown
+        requested_amount_myr: number | null
+        requested_tenure_months: number | null
+      }>()
 
     // Build context for AI from real MARA loan eligibility data
     const businessContext = {

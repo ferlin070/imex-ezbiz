@@ -77,14 +77,11 @@ export default function LoginPage() {
         if (profile.role !== 'mara_officer' && profile.role !== 'admin') {
           throw new Error('Akses dinafikan. Akaun ini bukan akaun Pegawai MARA.')
         }
-        // Save mock cookie for middleware backcompat
-        document.cookie = `imex_mock_session=${user.id}; path=/; max-age=86400; SameSite=Lax`
         router.push('/pegawai')
       } else {
         if (profile.role !== 'entrepreneur') {
           throw new Error('Akses dinafikan. Akaun ini bukan akaun Usahawan.')
         }
-        document.cookie = `imex_mock_session=${user.id}; path=/; max-age=86400; SameSite=Lax`
         router.push('/usahawan')
       }
     } catch (err: any) {

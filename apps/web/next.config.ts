@@ -1,9 +1,5 @@
 import type { NextConfig } from "next";
 
-if (process.env.NODE_ENV === 'production' && process.env.MOCK_SESSION_FOR_TEST) {
-  throw new Error("SECURITY ERROR: MOCK_SESSION_FOR_TEST is not allowed in production environment!");
-}
-
 const nextConfig: NextConfig = {
   async headers() {
     return [
