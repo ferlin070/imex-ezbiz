@@ -1,18 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createMockSupabaseClient } from './mockClient'
 
 export async function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  const isDummy = !url || !key || url.includes('dummy')
-  
-  const isProd = process.env.NODE_ENV === 'production'
-  const mockSessionVal = !isProd ? (process.env.MOCK_SESSION_FOR_TEST || null) : null
 
-  // CRITICAL: In production, never silently fall back to mock data.
-  // If env vars are missing/dummy in prod, throw a clear error immediately.
-  if (isDummy && isProd) {
+  if (!url || !key || url.includes('dummy')) {
     throw new Error(
       '[MARA AI-Advisor] SUPABASE environment variables tidak ditetapkan atau mengandungi nilai placeholder. ' +
       'Pergi ke Vercel Dashboard → Settings → Environment Variables dan tetapkan ' +
@@ -20,28 +13,11 @@ export async function createClient() {
     )
   }
 
-  if (isDummy || mockSessionVal) {
-    let userId = null
-    try {
-      const cookieStore = await cookies()
-      userId = cookieStore.get('imex_mock_session')?.value || null
-    } catch {}
-
-    if (!userId && mockSessionVal) {
-      try {
-        const parsed = JSON.parse(mockSessionVal)
-        userId = parsed.id
-      } catch {}
-    }
-    return createMockSupabaseClient(userId)
-  }
-
-
   const cookieStore = await cookies()
 
   return createServerClient(
-    url!,
-    key!,
+    url,
+    key,
     {
       cookies: {
         getAll() {
@@ -64,25 +40,17 @@ export async function createClient() {
 export function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const isProd = process.env.NODE_ENV === 'production'
-  const hasMockSession = !isProd && !!process.env.MOCK_SESSION_FOR_TEST
-  const isDummy = !url || !serviceKey || url.includes('dummy') || hasMockSession
 
-  // CRITICAL: In production, never silently fall back to mock admin client.
-  if (isDummy && isProd) {
+  if (!url || !serviceKey || url.includes('dummy')) {
     throw new Error(
       '[MARA AI-Advisor] SUPABASE_SERVICE_ROLE_KEY tidak ditetapkan atau mengandungi nilai placeholder. ' +
       'Pergi ke Vercel Dashboard → Settings → Environment Variables dan tetapkan nilai sebenar.'
     )
   }
 
-  if (isDummy) {
-    return createMockSupabaseClient('admin-id-mock-uuid')
-  }
-
   return createServerClient(
-    url!,
-    serviceKey!,
+    url,
+    serviceKey,
     {
       cookies: {
         getAll() {
