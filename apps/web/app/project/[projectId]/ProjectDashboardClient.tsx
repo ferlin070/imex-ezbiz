@@ -2,8 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, FileText, ArrowRight, RefreshCw, AlertCircle, LogOut, CheckCircle2, ChevronRight, Download, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import {
+  Sparkles,
+  LogOut,
+  ArrowRight,
+  Download,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle2,
+  FileText,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  ChevronRight,
+  ChevronLeft,
+} from 'lucide-react'
 import FeasibilityGauge from '@/components/FeasibilityGauge'
 import SwotTabs from '@/components/SwotTabs'
 import BlueprintCard from '@/components/BlueprintCard'
@@ -15,91 +29,69 @@ interface Project {
   description: string
   category: string
   team_members: string[]
-  event_id: string
-  owner_user_id: string | null
-  mara_visible?: boolean
-  state?: string
-  institution?: string
   score_source?: string
+  mara_visible: boolean
 }
 
 interface Report {
-  id: string
-  project_id: string
-  feasibility_score: number
-  feasibility_tier: 'Sangat Berpotensi' | 'Layak Komersial' | 'Berpotensi Sederhana' | 'Perlu Bimbingan'
-  swot: any
-  blueprint: any
+  swot: {
+    strengths: string[]
+    weaknesses: string[]
+    opportunities: string[]
+    threats: string[]
+  }
+  blueprint: {
+    technical: string[]
+    marketing: string[]
+    financial: string[]
+  }
   pitch_script: string
-  grant_notes: any
-  generated_at: string
+  feasibility_score: number
+  feasibility_tier: string
+}
+
+interface CriteriaBreakdown {
+  criteriaId: string
+  code: string
+  label: string
+  average: number
+  max_score: number
+  percentage: number
+}
+
+interface FeasibilityResult {
+  score: number
+  tier: 'Sangat Berpotensi' | 'Layak Komersial' | 'Berpotensi Sederhana' | 'Perlu Bimbingan'
+  criteriaBreakdown: CriteriaBreakdown[]
 }
 
 interface ProjectDashboardClientProps {
   project: Project
-  feasibilityResult: { 
-    score: number
-    tier: any
-    criteriaBreakdown: {
-      criteriaId: string
-      code: string
-      label: string
-      average: number
-      percentage: number
-      max_score: number
-    }[]
-  }
-  initialReport: Report | null
   userName: string
+  initialReport: Report | null
+  feasibilityResult: FeasibilityResult
 }
 
 export default function ProjectDashboardClient({
   project,
-  feasibilityResult,
-  initialReport,
   userName,
+  initialReport,
+  feasibilityResult,
 }: ProjectDashboardClientProps) {
   const router = useRouter()
   const supabase = createClient()
 
   const [report, setReport] = useState<Report | null>(initialReport)
-  const [maraVisible, setMaraVisible] = useState(project.mara_visible || false)
-  const [updatingConsent, setUpdatingConsent] = useState(false)
   const [generating, setGenerating] = useState(false)
-  const [genStep, setGenStep] = useState(0) // 0 to 4 steps of progress
-  const [errorMsg, setErrorMsg] = useState('')
+  const [genStep, setGenStep] = useState(0)
   const [countdown, setCountdown] = useState(0)
+  const [errorMsg, setErrorMsg] = useState('')
 
-  const handleToggleConsent = async () => {
-    setUpdatingConsent(true)
-    setErrorMsg('')
-    const newStatus = !maraVisible
-    try {
-      const res = await fetch('/api/project/consent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectId: project.id,
-          maraVisible: newStatus,
-        }),
-      })
+  // Consent state
+  const [maraVisible, setMaraVisible] = useState(project.mara_visible)
+  const [updatingConsent, setUpdatingConsent] = useState(false)
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Gagal mengemas kini kebenaran MARA.')
-      }
-
-      setMaraVisible(newStatus)
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal mengemas kini kebenaran MARA.')
-    } finally {
-      setUpdatingConsent(false)
-    }
-  }
-
-  // Track rate limit countdown
+  // Countdown timer for rate limiting
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
@@ -107,67 +99,115 @@ export default function ProjectDashboardClient({
     }
   }, [countdown])
 
-  // Progress simulation for Gemini generation
-  useEffect(() => {
-    if (generating) {
-      const interval = setInterval(() => {
-        setGenStep((prev) => {
-          if (prev < 4) return prev + 1
-          return prev
-        })
-      }, 2500) // increment every 2.5 seconds to match ~10-12s Gemini call
-      return () => clearInterval(interval)
-    } else {
-      setGenStep(0)
+  const handleLogout = async () => {
+    if (typeof document !== 'undefined') {
+      document.cookie = 'imex_mock_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
     }
-  }, [generating])
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  const handleToggleConsent = async () => {
+    setUpdatingConsent(true)
+    setErrorMsg('')
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ mara_visible: !maraVisible })
+        .eq('id', project.id)
+
+      if (error) throw error
+      setMaraVisible(!maraVisible)
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Gagal mengemaskini tetapan kebenaran.')
+    } finally {
+      setUpdatingConsent(false)
+    }
+  }
 
   const handleGenerateReport = async () => {
     setGenerating(true)
     setGenStep(0)
     setErrorMsg('')
 
+    // Simulated step transitions for better UX feel
+    const stepInterval = setInterval(() => {
+      setGenStep((prev) => {
+        if (prev >= 4) {
+          clearInterval(stepInterval)
+          return 4
+        }
+        return prev + 1
+      })
+    }, 2000)
+
     try {
       const res = await fetch('/api/reports/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId: project.id }),
       })
 
-      if (res.status === 429) {
-        const data = await res.json()
-        setCountdown(data.secondsLeft || 300)
-        throw new Error(data.error || 'Had kadar terlampau.')
-      }
-
-      if (!res.ok) {
-        const errData = await res.json()
-        throw new Error(errData.error || 'Gagal menjana laporan.')
-      }
-
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Gagal menjana laporan.')
+
       setReport(data.report)
+      setCountdown(30) // Limit to once every 30 seconds
     } catch (err: any) {
-      setErrorMsg(err.message || 'Ralat penjanaan laporan AI.')
+      setErrorMsg(err.message || 'Ralat berlaku semasa menjana laporan.')
     } finally {
+      clearInterval(stepInterval)
       setGenerating(false)
     }
   }
 
-  const handleLogout = async () => {
-    document.cookie = 'imex_mock_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-    await supabase.auth.signOut()
-    router.push('/login')
+  // Safe helper to map feasibility status for MARA focus
+  const getGrantMapping = () => {
+    const score = feasibilityResult.score
+
+    if (score >= 80) {
+      return [
+        {
+          key: 'mara_spiim',
+          title: 'Skim Pembiayaan Kontrak MARA (SPIIM)',
+          desc: 'Sangat Disyorkan. Projek anda melepasi kelayakan teknikal/komersial peringkat tinggi MARA. Anda layak memohon pembiayaan projek sehingga RM500,000.',
+        },
+        {
+          key: 'mara_express',
+          title: 'Skim Pembiayaan Express MARA',
+          desc: 'Kelayakan tinggi. Kelulusan pembiayaan segera sehingga RM50,000 untuk meningkatkan kapasiti operasi perniagaan TVET/Inovasi.',
+        },
+      ]
+    } else if (score >= 50) {
+      return [
+        {
+          key: 'mara_pemasaran',
+          title: 'Geran Pembangunan Pemasaran MARA',
+          desc: 'Layak Komersial. Bantuan kewangan pengiklanan & pameran sehingga RM10,000 untuk meningkatkan keterlihatan produk inovasi.',
+        },
+        {
+          key: 'mara_micro',
+          title: 'Skim Pembiayaan Mikro MARA',
+          desc: 'Perniagaan anda layak memohon pembiayaan mikro modal kerja sehingga RM20,000 dengan dokumen sedia ada.',
+        },
+      ]
+    } else {
+      return [
+        {
+          key: 'mara_tvet',
+          title: 'Skim Keusahawanan TVET MARA',
+          desc: 'Berpotensi. Disyorkan menjalani bimbingan inkubator MARA sebelum permohonan pembiayaan berskala penuh dilakukan.',
+        },
+        {
+          key: 'mara_bimbingan',
+          title: 'Khidmat Nasihat Keusahawanan (IPD MARA)',
+          desc: 'Bimbingan pembangunan produk, pembungkusan dan pendaftaran SSM untuk melayakkan skim pembiayaan pada masa hadapan.',
+        },
+      ]
+    }
   }
 
-  // Grant names map for localized presentation
-  const grantMapping = [
-    { key: 'mara', title: 'MARA (Skim PUTRA / SPIKE)', desc: report?.grant_notes?.mara },
-    { key: 'tekun', title: 'TEKUN Nasional / PUNB', desc: report?.grant_notes?.tekun },
-    { key: 'mdec', title: 'MDEC (SME Digital Grant) / Cradle', desc: report?.grant_notes?.mdec },
-  ]
+  const grantMapping = getGrantMapping()
 
   const renderCriteriaBreakdown = () => (
     <div className="glass-card rounded-xl border border-white/5 p-5 flex flex-col gap-4">
@@ -181,7 +221,7 @@ export default function ProjectDashboardClient({
             </div>
             <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5 p-0.5">
               <div 
-                className="bg-gradient-to-r from-teal-500 to-teal-400 h-full rounded-full transition-all duration-1000" 
+                className="bg-gradient-to-r from-mara-red to-mara-red/80 h-full rounded-full transition-all duration-1000" 
                 style={{ width: `${c.percentage}%` }}
               />
             </div>
@@ -249,10 +289,10 @@ export default function ProjectDashboardClient({
       {/* Header bar */}
       <header className="sticky top-0 bg-navy-900/80 backdrop-blur-md border-b border-white/5 px-4 py-3 flex items-center justify-between z-20">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-teal-neon" />
+          <Sparkles className="w-5 h-5 text-mara-red" />
           <div>
-            <h1 className="text-sm font-bold tracking-tight bg-gradient-to-r from-teal-neon to-cyan-neon bg-clip-text text-transparent">
-              IMEX AI-Biz
+            <h1 className="text-sm font-bold tracking-tight bg-gradient-to-r from-mara-red to-mara-gold bg-clip-text text-transparent">
+              MARA AI-Advisor
             </h1>
             <p className="text-[10px] text-gray-400 font-semibold uppercase">Dashboard Usahawan</p>
           </div>
@@ -279,10 +319,10 @@ export default function ProjectDashboardClient({
         {/* Project Header Card */}
         <div className="glass-card rounded-xl border border-white/5 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
           {/* Neon background light */}
-          <div className="absolute top-0 left-0 w-32 h-32 bg-teal-neon/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 left-0 w-32 h-32 bg-mara-red/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex-1">
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-cyan-950/40 border border-cyan-800/30 text-[10px] text-cyan-400 font-extrabold uppercase mb-2">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-mara-red/10 border border-mara-red/20 text-[10px] text-mara-gold font-extrabold uppercase mb-2">
               <span>{project.category || 'Inovasi TVET'}</span>
             </div>
             <h2 className="text-3xl font-extrabold tracking-tight text-white">{project.title}</h2>
@@ -299,9 +339,9 @@ export default function ProjectDashboardClient({
               <>
                 <button
                   onClick={() => window.open(`/api/pdf/${project.id}`)}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-teal-neon to-cyan-neon text-navy-950 font-bold rounded-lg transition-all shadow-[0_0_15px_rgba(0,242,254,0.2)] hover:shadow-[0_0_20px_rgba(0,242,254,0.4)] cursor-pointer text-sm"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-mara-red to-mara-gold text-white font-bold rounded-lg transition-all shadow-[0_0_15px_rgba(194,14,26,0.2)] hover:shadow-[0_0_20px_rgba(194,14,26,0.4)] cursor-pointer text-sm"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-4 h-4 text-white" />
                   <span>Muat Turun PDF Laporan</span>
                 </button>
                 <button
@@ -332,8 +372,8 @@ export default function ProjectDashboardClient({
           <div className="glass-card rounded-xl border border-white/5 p-12 text-center flex flex-col items-center justify-center gap-6">
             {/* Pulsing indicator */}
             <div className="relative w-16 h-16 flex items-center justify-center">
-              <span className="w-12 h-12 border-4 border-teal-neon/20 border-t-teal-neon rounded-full animate-spin absolute" />
-              <Sparkles className="w-5 h-5 text-teal-neon animate-pulse" />
+              <span className="w-12 h-12 border-4 border-mara-red/20 border-t-mara-red rounded-full animate-spin absolute" />
+              <Sparkles className="w-5 h-5 text-mara-red animate-pulse" />
             </div>
 
             <div className="space-y-2">
@@ -358,11 +398,11 @@ export default function ProjectDashboardClient({
                     {isDone ? (
                       <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
                     ) : isActive ? (
-                      <span className="w-4 h-4 border-2 border-teal-neon border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span className="w-4 h-4 border-2 border-mara-red border-t-transparent rounded-full animate-spin shrink-0" />
                     ) : (
                       <span className="w-4 h-4 rounded-full border border-gray-600 shrink-0" />
                     )}
-                    <span className={`text-xs font-semibold ${isActive ? 'text-teal-neon font-black' : 'text-gray-400'}`}>
+                    <span className={`text-xs font-semibold ${isActive ? 'text-mara-red font-black' : 'text-gray-400'}`}>
                       {step}
                     </span>
                   </div>
@@ -380,22 +420,22 @@ export default function ProjectDashboardClient({
             </div>
             
             <div className="md:col-span-2 glass-card rounded-xl border border-white/5 p-8 flex flex-col justify-center items-center text-center gap-6">
-              <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-full text-cyan-400">
+              <div className="p-3 bg-mara-gold/10 border border-mara-gold/20 rounded-full text-mara-gold">
                 <FileText className="w-8 h-8" />
               </div>
               <div className="space-y-2">
                 <h3 className="text-xl font-extrabold text-white">Jana Analisis SWOT & Blueprint Perniagaan</h3>
                 <p className="text-xs text-gray-400 max-w-md leading-relaxed mx-auto">
-                  Tukarkan markah juri pertandingan anda menjadi rancangan perniagaan lengkap dengan SWOT, blueprint tindakan komersial, skrip pitch pelabur, dan nota kelayakan geran MARA/TEKUN.
+                  Tukarkan markah juri pertandingan anda menjadi rancangan perniagaan lengkap dengan SWOT, blueprint tindakan komersial, skrip pitch pelabur, dan nota kelayakan geran MARA.
                 </p>
               </div>
 
               <button
                 onClick={handleGenerateReport}
-                className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-teal-neon to-cyan-neon text-navy-950 font-black rounded-xl transition-all shadow-[0_0_15px_rgba(0,242,254,0.3)] hover:shadow-[0_0_20px_rgba(0,242,254,0.5)] cursor-pointer text-sm uppercase tracking-wider"
+                className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-mara-red to-mara-gold text-white font-black rounded-xl transition-all shadow-[0_0_15px_rgba(194,14,26,0.3)] hover:shadow-[0_0_20px_rgba(194,14,26,0.5)] cursor-pointer text-sm uppercase tracking-wider"
               >
                 <span>Jana Laporan AI Sekarang</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 text-white" />
               </button>
             </div>
           </div>
@@ -415,7 +455,7 @@ export default function ProjectDashboardClient({
                 <div className="space-y-4">
                   {grantMapping.map((g) => (
                     <div key={g.key} className="space-y-1">
-                      <span className="text-[10px] font-black uppercase text-teal-neon block">{g.title}</span>
+                      <span className="text-[10px] font-black uppercase text-mara-red block">{g.title}</span>
                       <p className="text-[11px] text-gray-400 leading-relaxed bg-navy-950/60 p-2.5 rounded border border-white/5">{g.desc}</p>
                     </div>
                   ))}

@@ -20,10 +20,10 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Tidak dibenarkan. Sila log masuk.' }, { status: 401 })
     }
 
-    // 2. Fetch project metadata
+    // 2. Fetch project metadata (only columns that exist in current schema)
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('id, title, description, category, team_members, event_id, owner_user_id')
+      .select('id, title, description, category, owner_user_id')
       .eq('id', projectId)
       .limit(1)
       .maybeSingle()
@@ -32,7 +32,8 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Projek tidak dijumpai.' }, { status: 404 })
     }
 
-    // 3. Verify user has rights (owner, judge for the event, or admin)
+    // 3. Verify user has rights: owner OR admin/mara_officer only
+    //    A2 FIX: Removed 'judge' role and query to non-existent 'judges' table
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -40,21 +41,9 @@ export async function GET(request: Request, context: RouteContext) {
       .single()
 
     const isOwner = project.owner_user_id === user.id
-    const isAdmin = profile?.role === 'admin'
-    
-    let isJudge = false
-    if (profile?.role === 'judge') {
-      const { data: judge } = await supabase
-        .from('judges')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('event_id', project.event_id)
-        .limit(1)
-        .maybeSingle()
-      if (judge) isJudge = true;
-    }
+    const isStaff = profile?.role === 'admin' || profile?.role === 'mara_officer'
 
-    if (!isOwner && !isAdmin && !isJudge) {
+    if (!isOwner && !isStaff) {
       return NextResponse.json({ error: 'Akses dinafikan.' }, { status: 403 })
     }
 
@@ -80,7 +69,7 @@ export async function GET(request: Request, context: RouteContext) {
           title: project.title,
           description: project.description || '',
           category: project.category || '',
-          team_members: project.team_members || [],
+          team_members: [],
         },
         report: {
           feasibility_score: Number(report.feasibility_score) || 0,

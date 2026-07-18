@@ -78,10 +78,14 @@ export default async function ProjectPage({ params }: PageProps) {
     .limit(1)
     .maybeSingle()
 
-  let feasibilityResult = {
+  let feasibilityResult: {
+    score: number
+    tier: 'Sangat Berpotensi' | 'Layak Komersial' | 'Berpotensi Sederhana' | 'Perlu Bimbingan'
+    criteriaBreakdown: any[]
+  } = {
     score: 0,
     tier: 'Perlu Bimbingan',
-    criteriaBreakdown: [] as any[]
+    criteriaBreakdown: []
   }
 
   if (latestApp && latestApp.eligibility_output && (latestApp.eligibility_output as any).criteria) {

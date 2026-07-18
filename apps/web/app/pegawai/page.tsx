@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Landmark, ShieldAlert, CheckCircle, AlertTriangle, XCircle, LogOut } from 'lucide-react'
-import Link from 'next/link'
+import { Landmark, ShieldAlert, CheckCircle, AlertTriangle, XCircle } from 'lucide-react'
+import LogoutButton from '@/components/LogoutButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +45,7 @@ export default async function PegawaiDashboard() {
         business_profile:business_profiles (
           business_name,
           ssm_number,
+          owner_full_name,
           owner_age,
           is_bumiputera,
           operating_since
@@ -55,14 +56,14 @@ export default async function PegawaiDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 relative overflow-hidden">
-      {/* Glow background */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[120px] pointer-events-none" />
+      {/* Glow background with corporate MARA gold */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-mara-gold/5 blur-[120px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto space-y-8 z-10 relative">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-5">
           <div className="flex items-center gap-3">
-            <Landmark className="w-8 h-8 text-cyan-400" />
+            <Landmark className="w-8 h-8 text-mara-gold" />
             <div>
               <h1 className="text-2xl font-bold text-white">Konsol Pegawai MARA</h1>
               <p className="text-xs text-slate-400">Penyemakan permohonan pembiayaan usahawan & laporan kelayakan AI</p>
@@ -71,14 +72,9 @@ export default async function PegawaiDashboard() {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <span className="text-xs text-slate-400 block font-medium">Pegawai: {profile.name}</span>
-              <span className="text-[10px] bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">MARA Officer</span>
+              <span className="text-[10px] bg-mara-red/10 border border-mara-red/20 text-mara-red px-2 py-0.5 rounded font-bold uppercase tracking-wider">MARA Officer</span>
             </div>
-            <Link 
-              href="/login" 
-              className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition"
-            >
-              <LogOut className="w-5 h-5" />
-            </Link>
+            <LogoutButton />
           </div>
         </div>
 
@@ -90,7 +86,7 @@ export default async function PegawaiDashboard() {
           </div>
           <div className="p-5 bg-slate-900/40 border border-slate-850 rounded-2xl">
             <span className="text-xs text-slate-500 font-bold uppercase block">Status LULUS</span>
-            <span className="text-2xl font-extrabold text-teal-400">
+            <span className="text-2xl font-extrabold text-emerald-400">
               {applications?.filter((a: any) => a.eligibility_status === 'LULUS').length || 0}
             </span>
           </div>
@@ -159,8 +155,8 @@ export default async function PegawaiDashboard() {
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800">
                           {app.eligibility_status === 'LULUS' && (
                             <>
-                              <CheckCircle className="w-4 h-4 text-teal-400" />
-                              <span className="text-xs font-black text-teal-400">LULUS RULES</span>
+                              <CheckCircle className="w-4 h-4 text-emerald-400" />
+                              <span className="text-xs font-black text-emerald-400">LULUS RULES</span>
                             </>
                           )}
                           {app.eligibility_status === 'TIDAK_LULUS' && (
@@ -183,35 +179,35 @@ export default async function PegawaiDashboard() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* Rules Engine Output */}
                       <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hasil Semakan Rules Engine</h4>
+                        <h4 className="text-xs font-bold text-slate-400 tracking-wider uppercase">Hasil Semakan Rules Engine</h4>
                         <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900 space-y-2.5">
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Had Umur Pemilik (18 - 60):</span>
-                            <span className={checks.agePassed ? "text-teal-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={checks.agePassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                               {bizProfile.owner_age || '-'} Tahun ({checks.agePassed ? "Lepas" : "Gagal"})
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Status Bumiputera:</span>
-                            <span className={checks.bumiputeraPassed ? "text-teal-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={checks.bumiputeraPassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                               {bizProfile.is_bumiputera ? 'Ya' : 'Bukan'} ({checks.bumiputeraPassed ? "Lepas" : "Gagal"})
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Pendaftaran SSM (Aktif):</span>
-                            <span className={checks.ssmActivePassed ? "text-teal-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={checks.ssmActivePassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                               {checks.ssmActivePassed ? "Aktif" : "Tidak Aktif/Gagal"}
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Tempoh Matang Bisnes (Haul):</span>
-                            <span className={checks.haulPassed ? "text-teal-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={checks.haulPassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                               {checks.haulDurationMonths !== undefined ? `${checks.haulDurationMonths} Bulan` : 'Gagal'} ({checks.haulPassed ? "Lepas" : "Gagal"})
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Dokumen Wajib Dimuat Naik:</span>
-                            <span className={checks.documentsPassed ? "text-teal-400 font-bold" : "text-amber-400 font-bold"}>
+                            <span className={checks.documentsPassed ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
                               {checks.documentsPassed ? "Lengkap" : "Tidak Lengkap"}
                             </span>
                           </div>
@@ -221,7 +217,7 @@ export default async function PegawaiDashboard() {
                       {/* AI Advisor Plan */}
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Syor & Pelan Tindakan AI</h4>
+                          <h4 className="text-xs font-bold text-slate-400 tracking-wider uppercase">Syor & Pelan Tindakan AI</h4>
                           {app.was_blocked_by_guardrail && (
                             <span className="flex items-center gap-1 text-[9px] bg-rose-500/10 border border-rose-500/20 text-rose-400 px-2 py-0.5 rounded font-black">
                               <ShieldAlert className="w-3 h-3" />

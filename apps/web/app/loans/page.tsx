@@ -52,7 +52,7 @@ export default async function LoansPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Landmark className="w-6 h-6 text-teal-400" />
+              <Landmark className="w-6 h-6 text-mara-red" />
               Skim Pembiayaan & Pinjaman MARA
             </h1>
             <p className="text-xs text-slate-400">Pilih skim pembiayaan MARA yang bersesuaian dengan profil perniagaan anda.</p>
@@ -61,7 +61,7 @@ export default async function LoansPage() {
 
         <div className="text-right hidden sm:block">
           <span className="text-xs text-slate-400 block font-medium">Usahawan: {profile.name}</span>
-          <span className="text-[10px] text-teal-400 font-bold block uppercase tracking-wider">Akaun Bumiputera</span>
+          <span className="text-[10px] text-mara-gold font-bold block uppercase tracking-wider">Akaun Bumiputera</span>
         </div>
       </div>
 
@@ -100,7 +100,7 @@ export default async function LoansPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-start gap-4">
                       <h3 className="font-extrabold text-base text-slate-200">{p.name}</h3>
-                      <span className="text-xs bg-teal-400/10 border border-teal-500/20 text-teal-400 px-2.5 py-1 rounded-lg font-bold shrink-0">
+                      <span className="text-xs bg-mara-red/10 border border-mara-red/20 text-mara-red px-2.5 py-1 rounded-lg font-bold shrink-0">
                         {p.profit_rate_percent}% Kadar Keuntungan
                       </span>
                     </div>
@@ -134,10 +134,10 @@ export default async function LoansPage() {
                     {project ? (
                       <Link
                         href={`/loans/apply/${p.id}`}
-                        className="w-full mt-2 py-3 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 text-slate-900 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-teal-500/10"
+                        className="w-full mt-2 py-3 bg-gradient-to-r from-mara-red to-mara-gold hover:from-mara-red/80 hover:to-mara-gold/80 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-mara-red/10"
                       >
                         <span>Pilih Skim & Semak Kelayakan</span>
-                        <ArrowRight className="w-4 h-4 text-slate-900" />
+                        <ArrowRight className="w-4 h-4 text-white" />
                       </Link>
                     ) : (
                       <button
@@ -160,15 +160,15 @@ export default async function LoansPage() {
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Kelebihan Pembiayaan MARA</h3>
             <ul className="text-xs text-slate-400 space-y-3 leading-relaxed">
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-mara-red shrink-0 mt-0.5" />
                 <span>Kadar keuntungan rendah (3.5% - 4% setahun).</span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-mara-red shrink-0 mt-0.5" />
                 <span>Jadual anjal dengan tempoh bayaran balik sehingga 7 tahun.</span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-mara-red shrink-0 mt-0.5" />
                 <span>Tiada penjamin diperlukan untuk skim pembiayaan mikro.</span>
               </li>
             </ul>

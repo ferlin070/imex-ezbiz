@@ -72,12 +72,12 @@ export default function LoanCalculatorWidget({
   }
 
   return (
-    <div className="glass-card rounded-2xl border border-white/5 p-6 space-y-6 relative overflow-hidden bg-gradient-to-br from-teal-neon/[0.01] to-transparent">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-teal-neon/5 rounded-full blur-2xl pointer-events-none" />
+    <div className="glass-card rounded-2xl border border-white/5 p-6 space-y-6 relative overflow-hidden bg-gradient-to-br from-mara-red/[0.01] to-transparent">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-mara-red/5 rounded-full blur-2xl pointer-events-none" />
 
       {/* Header */}
       <div className="flex items-center gap-2">
-        <Calculator className="w-5 h-5 text-teal-neon" />
+        <Calculator className="w-5 h-5 text-mara-red" />
         <div>
           <h3 className="font-bold text-sm text-gray-200">Kalkulator Kelayakan Pinjaman MARA</h3>
           <p className="text-[10px] text-gray-500 font-bold uppercase">Kadar Untung Pengurangan Baki Amortisasi</p>
@@ -91,7 +91,7 @@ export default function LoanCalculatorWidget({
           <select
             value={selectedProductId}
             onChange={(e) => handleProductChange(e.target.value)}
-            className="w-full bg-[#0b0f19] border border-white/5 rounded-xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-teal-500/50"
+            className="w-full bg-[#0b0f19] border border-white/5 rounded-xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-mara-red/50"
           >
             {products.map(p => (
               <option key={p.id} value={p.id}>
@@ -114,7 +114,7 @@ export default function LoanCalculatorWidget({
             step={Math.max(1000, Math.round((activeProduct.max_amount_myr - activeProduct.min_amount_myr) / 100))}
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-neon"
+            className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-mara-red"
           />
           <div className="flex justify-between text-[9px] text-slate-500 font-bold">
             <span>RM {activeProduct.min_amount_myr.toLocaleString()}</span>
@@ -135,7 +135,7 @@ export default function LoanCalculatorWidget({
             step={1}
             value={tenure}
             onChange={(e) => setTenure(Number(e.target.value))}
-            className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-teal-neon"
+            className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-mara-red"
           />
           <div className="flex justify-between text-[9px] text-slate-500 font-bold">
             <span>{activeProduct.min_tenure_months} Bulan</span>
@@ -149,7 +149,7 @@ export default function LoanCalculatorWidget({
         <div className="grid grid-cols-3 gap-3 bg-[#0b0f19]/80 p-4 border border-white/5 rounded-xl text-center">
           <div className="space-y-1">
             <span className="text-[8px] font-bold text-slate-500 block uppercase">Ansuran Bulanan</span>
-            <span className="text-sm font-black text-teal-neon">RM {result.monthlyInstallment.toLocaleString()}</span>
+            <span className="text-sm font-black text-mara-red">RM {result.monthlyInstallment.toLocaleString()}</span>
           </div>
           <div className="space-y-1 border-x border-white/5">
             <span className="text-[8px] font-bold text-slate-500 block uppercase">Jumlah Caj Untung</span>
@@ -175,7 +175,7 @@ export default function LoanCalculatorWidget({
         {onApply && (
           <button
             onClick={() => onApply(selectedProductId, amount, tenure)}
-            className="w-full py-2.5 bg-gradient-to-r from-teal-neon to-cyan-neon text-navy-950 font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(0,242,254,0.2)] hover:shadow-[0_0_20px_rgba(0,242,254,0.4)] cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 bg-gradient-to-r from-mara-red to-mara-gold text-white font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(194,14,26,0.2)] hover:shadow-[0_0_20px_rgba(194,14,26,0.4)] cursor-pointer flex items-center justify-center gap-1.5"
           >
             <span>Mohon Pembiayaan Sekarang</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -202,7 +202,7 @@ export default function LoanCalculatorWidget({
                 {result.schedule.map((item) => (
                   <tr key={item.month} className="hover:bg-white/[0.01]">
                     <td className="py-2 px-3 font-sans text-slate-500">#{item.month}</td>
-                    <td className="py-2 px-2 text-right text-teal-neon/90">RM{item.installment.toFixed(2)}</td>
+                    <td className="py-2 px-2 text-right text-mara-red/90">RM{item.installment.toFixed(2)}</td>
                     <td className="py-2 px-2 text-right text-gray-300">RM{item.principal.toFixed(2)}</td>
                     <td className="py-2 px-2 text-right text-gray-500">RM{item.profit.toFixed(2)}</td>
                     <td className="py-2 px-3 text-right text-gray-400">RM{item.balance.toFixed(2)}</td>

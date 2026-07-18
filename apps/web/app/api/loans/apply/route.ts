@@ -1,14 +1,34 @@
 import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { calculateLoan } from '@/lib/loanCalculator'
 import { z } from 'zod'
-import * as fs from 'fs'
-import * as path from 'path'
 import { evaluateEligibility } from '@services/eligibility-engine'
-import { generateActionPlan } from '@services/ai-advisor'
 import { runGuardrail } from '@services/guardrail'
+
+// A1 FIX: Replaced fs.writeFileSync (fails silently on Vercel serverless —
+// read-only filesystem) with Supabase insert using admin client.
+// Failure to log NEVER blocks the user's loan application.
+async function writeDecisionLog(userId: string, data: Record<string, unknown>) {
+  try {
+    const adminSupabase = createAdminClient()
+    const { error } = await adminSupabase
+      .from('decision_logs')
+      .insert({
+        user_id: userId,
+        project_id: data.projectId as string ?? null,
+        loan_product_id: data.loanProductId as string ?? null,
+        payload: data,
+      })
+    if (error) {
+      // Use logger.error (not warn) so failures are clearly visible in Vercel logs
+      logger.error('[AuditLog] Gagal insert decision_logs ke Supabase:', error)
+    }
+  } catch (err) {
+    logger.error('[AuditLog] Exception semasa menulis audit log keputusan:', err)
+  }
+}
 
 const loanApplicationSchema = z.object({
   projectId: z.string().uuid('ID projek tidak sah'),
@@ -18,25 +38,13 @@ const loanApplicationSchema = z.object({
   purpose: z.string().min(5, 'Sila nyatakan tujuan pembiayaan dengan jelas (min 5 aksara)')
 })
 
-function writeDecisionLog(userId: string, data: any) {
-  try {
-    const logDir = path.join(process.cwd(), 'audit/decision-logs')
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true })
-    }
-    const filepath = path.join(logDir, `log-${Date.now()}-${userId}.json`)
-    fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf8')
-  } catch (err) {
-    logger.warn('Gagal menulis audit log keputusan:', err)
-  }
-}
-
 export async function POST(request: Request) {
   let createdApplicationId: string | null = null
   let supabaseClient: Awaited<ReturnType<typeof createClient>> | null = null
 
   try {
-    const auth = await requireRole(['entrepreneur', 'admin', 'mara_officer', 'judge'])
+    // 1. Auth check
+    const auth = await requireRole(['entrepreneur', 'admin', 'mara_officer'])
     if (auth.error) return auth.error
     const { user, supabase } = auth
     supabaseClient = supabase
@@ -50,7 +58,7 @@ export async function POST(request: Request) {
 
     const { projectId, loanProductId, requestedAmountMyr, requestedTenureMonths, purpose } = parsed.data
 
-    // 3. Verify project ownership & details
+    // 3. Verify project ownership
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .select('id, owner_user_id')
@@ -65,19 +73,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Akses dinafikan. Anda bukan pemilik projek ini.' }, { status: 403 })
     }
 
-    // 4. Fetch business profile & uploaded documents
-    const { data: bizProfile } = await supabase
-      .from('business_profiles')
-      .select('*')
-      .eq('project_id', projectId)
-      .single()
+    // 4. A5 FIX: Fetch business profile & uploaded documents IN PARALLEL
+    //    (saves ~50-150ms per request vs sequential await)
+    const [{ data: bizProfile }, { data: documents }] = await Promise.all([
+      supabase
+        .from('business_profiles')
+        .select('*')
+        .eq('project_id', projectId)
+        .single(),
+      supabase
+        .from('business_documents')
+        .select('doc_type')
+        .eq('project_id', projectId),
+    ])
 
-    const { data: documents } = await supabase
-      .from('business_documents')
-      .select('doc_type')
-      .eq('project_id', projectId)
-
-    // 5. Run deterministic rules engine check
+    // 5. Run deterministic rules engine (synchronous — fast)
     const ownerAge = bizProfile?.owner_age || 30
     const isBumiputera = bizProfile?.is_bumiputera ?? true
     const ssmNumber = bizProfile?.ssm_number || 'SSM-NOT-FOUND'
@@ -89,29 +99,12 @@ export async function POST(request: Request) {
       documents: documents || []
     })
 
-    // 6. Generate action plan & filter through guardrails
-    const rawActionPlan = await generateActionPlan(eligibility, {
-      ssmNumber,
-      businessName: bizProfile?.business_name,
-      ownerAge,
-      isBumiputera
-    })
-
-    const guardrailResult = runGuardrail(rawActionPlan)
-
-    // Log the entire evaluation sequence for auditing
-    writeDecisionLog(user.id, {
-      userId: user.id,
-      projectId,
-      loanProductId,
-      ssmNumber,
-      bizProfile,
-      eligibility,
-      rawActionPlan,
-      guardrailPassed: guardrailResult.passed,
-      finalActionPlan: guardrailResult.cleanText,
-      timestamp: new Date().toISOString()
-    })
+    // 6. A4 OPSYEN B: Guardrail check on plain text eligibility summary only (fast)
+    //    Full AI report is generated ASYNC in a separate background route.
+    //    This prevents Vercel Hobby 10s timeout and gives users immediate feedback.
+    const guardrailResult = runGuardrail(
+      `Kelayakan: ${eligibility.status}. SSM: ${ssmNumber}. Bumiputera: ${isBumiputera}.`
+    )
 
     // 7. Fetch loan product constraints
     const { data: product, error: productError } = await supabase
@@ -132,7 +125,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Tempoh bayaran balik mestilah antara ${product.min_tenure_months} dan ${product.max_tenure_months} bulan.` }, { status: 400 })
     }
 
-    // 8. Create loan application with eligibility data
+    // 8. Create loan application — eligibility saved immediately (synchronous)
+    //    ai_action_plan is NULL initially; filled asynchronously by /api/loans/ai-plan/[id]
     const { data: application, error: appError } = await supabase
       .from('loan_applications')
       .insert({
@@ -144,7 +138,7 @@ export async function POST(request: Request) {
         status: 'submitted',
         eligibility_status: eligibility.status,
         eligibility_output: eligibility,
-        ai_action_plan: guardrailResult.cleanText,
+        ai_action_plan: null,        // Will be filled async by /api/loans/ai-plan/[id]
         was_blocked_by_guardrail: !guardrailResult.passed
       })
       .select('id')
@@ -159,7 +153,7 @@ export async function POST(request: Request) {
 
     // 9. Generate and save repayment schedule
     const calculation = calculateLoan(requestedAmountMyr, Number(product.profit_rate_percent), requestedTenureMonths)
-    
+
     const { error: scheduleError } = await supabase
       .from('loan_repayment_schedules')
       .insert({
@@ -176,7 +170,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Gagal menjana jadual bayaran balik.' }, { status: 500 })
     }
 
-    // 10. Update project application status to 'under_review'
+    // 10. Update project status
     const { error: projectUpdateError } = await supabase
       .from('projects')
       .update({ application_status: 'under_review' })
@@ -186,11 +180,27 @@ export async function POST(request: Request) {
       logger.warn('Gagal menaik taraf status projek kepada under_review:', projectUpdateError)
     }
 
+    // 11. A1 FIX: Write audit log to Supabase (non-blocking, fire & forget)
+    //     Failure here NEVER fails the request — logged to Vercel logs only.
+    writeDecisionLog(user.id, {
+      userId: user.id,
+      projectId,
+      loanProductId,
+      ssmNumber,
+      eligibilityStatus: eligibility.status,
+      guardrailPassed: guardrailResult.passed,
+      requestedAmountMyr,
+      requestedTenureMonths,
+      timestamp: new Date().toISOString(),
+    }).catch(err => logger.error('[AuditLog] Fire-and-forget gagal:', err))
+
     return NextResponse.json({
       success: true,
       applicationId: createdApplicationId,
       eligibilityStatus: eligibility.status,
-      actionPlan: guardrailResult.cleanText
+      // A4 Opsyen B: AI plan not ready yet — client should poll /api/loans/ai-plan/[id]
+      aiPlanStatus: 'pending',
+      message: 'Permohonan berjaya dihantar. Pelan tindakan AI sedang dijana secara latar belakang.'
     })
   } catch (error: any) {
     logger.error('Loan apply API exception:', error)

@@ -13,17 +13,17 @@ const FEATURES = [
     icon: FileSearch,
     title: 'Semakan Kelayakan Automatik',
     desc: 'Enjin peraturan deterministik menilai status SSM, haul perniagaan & dokumen secara telus tanpa campur tangan manual.',
-    color: 'text-cyan-400',
-    bg: 'bg-cyan-500/10',
-    border: 'border-cyan-500/20',
+    color: 'text-mara-gold',
+    bg: 'bg-mara-gold/10',
+    border: 'border-mara-gold/20',
   },
   {
     icon: Brain,
     title: 'Penasihat AI MARA',
     desc: 'AI Gemini memberikan cadangan skim pembiayaan yang paling sesuai, pelan tindakan, dan penerangan keputusan dalam Bahasa Melayu.',
-    color: 'text-teal-400',
-    bg: 'bg-teal-500/10',
-    border: 'border-teal-500/20',
+    color: 'text-mara-red',
+    bg: 'bg-mara-red/10',
+    border: 'border-mara-red/20',
   },
   {
     icon: ShieldCheck,
@@ -39,22 +39,22 @@ export default function Home() {
   return (
     <div className="flex-1 flex flex-col bg-navy-950 text-gray-100 min-h-screen relative overflow-hidden">
       {/* Background ambient glows */}
-      <div className="absolute top-[-15%] right-[-12%] w-[55%] h-[55%] rounded-full bg-cyan-500/8 blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[45%] h-[45%] rounded-full bg-teal-500/5 blur-[120px] pointer-events-none" />
-      <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[30%] h-[30%] rounded-full bg-cyan-400/3 blur-[100px] pointer-events-none" />
+      <div className="absolute top-[-15%] right-[-12%] w-[55%] h-[55%] rounded-full bg-mara-gold/8 blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[45%] h-[45%] rounded-full bg-mara-red/5 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[30%] h-[30%] rounded-full bg-mara-gold/3 blur-[100px] pointer-events-none" />
 
       {/* Main content */}
       <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-16 flex flex-col justify-center items-center text-center gap-10 relative z-10">
 
         {/* System badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-950/40 border border-cyan-500/25 text-cyan-400 text-xs font-semibold">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-mara-red/10 border border-mara-gold/25 text-mara-gold text-xs font-semibold">
           <Sparkles className="w-3.5 h-3.5 animate-pulse" />
           <span>Sistem Agentic AI — Penyemak &amp; Penasihat Kelayakan MARA</span>
         </div>
 
         {/* Hero title */}
         <div className="space-y-5">
-          <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-none bg-gradient-to-r from-teal-neon via-cyan-neon to-white bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(0,242,254,0.15)]">
+          <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-none bg-gradient-to-r from-mara-red via-mara-gold to-white bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(194,14,26,0.15)]">
             MARA AI-Advisor
           </h1>
           <p className="text-sm sm:text-base text-gray-400 max-w-xl mx-auto leading-relaxed">
@@ -68,10 +68,10 @@ export default function Home() {
           <Link
             href="/login"
             id="btn-login"
-            className="neon-border inline-flex items-center gap-2.5 px-10 py-3.5 bg-gradient-to-r from-teal-neon to-cyan-neon text-navy-950 font-black text-sm uppercase tracking-widest rounded-xl hover:shadow-[0_0_30px_rgba(0,242,254,0.4)] transition-all hover:scale-[1.03] active:scale-[0.98]"
+            className="neon-border inline-flex items-center gap-2.5 px-10 py-3.5 bg-gradient-to-r from-mara-red to-mara-gold text-white font-black text-sm uppercase tracking-widest rounded-xl hover:shadow-[0_0_30px_rgba(194,14,26,0.4)] transition-all hover:scale-[1.03] active:scale-[0.98]"
           >
             <span>Log Masuk</span>
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4 text-white" />
           </Link>
           <p className="text-[11px] text-gray-600">
             Satu log masuk untuk semua peranan — usahawan, pegawai &amp; pentadbir

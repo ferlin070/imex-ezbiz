@@ -28,17 +28,17 @@ export default function SwotTabs({ swot }: SwotTabsProps) {
     },
     weaknesses: {
       label: 'Kelemahan (W)',
-      color: 'text-red-400 border-red-500/20 bg-red-500/5',
-      indicator: 'bg-red-500',
-      icon: <AlertOctagon className="w-4 h-4 text-red-400" />,
+      color: 'text-mara-red border-mara-red/20 bg-mara-red/5',
+      indicator: 'bg-mara-red',
+      icon: <AlertOctagon className="w-4 h-4 text-mara-red" />,
       title: 'Kelemahan & Limitasi',
       desc: 'Kekurangan reka bentuk, kos, atau kebergantungan teknikal yang perlu diperbaiki.'
     },
     opportunities: {
       label: 'Peluang (O)',
-      color: 'text-cyan-400 border-cyan-500/20 bg-cyan-500/5',
-      indicator: 'bg-cyan-500',
-      icon: <TrendingUp className="w-4 h-4 text-cyan-400" />,
+      color: 'text-mara-gold border-mara-gold/20 bg-mara-gold/5',
+      indicator: 'bg-mara-gold',
+      icon: <TrendingUp className="w-4 h-4 text-mara-gold" />,
       title: 'Peluang Pasaran',
       desc: 'Potensi pengembangan pasaran, pembiayaan, kerjasama industri, dan permintaan semasa.'
     },

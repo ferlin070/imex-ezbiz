@@ -3,20 +3,20 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 import {
-  Landmark,
-  User,
-  KeyRound,
   Mail,
+  KeyRound,
+  Eye,
+  EyeOff,
+  User,
+  Landmark,
   Sparkles,
   ShieldAlert,
   CheckCircle,
-  Eye,
-  EyeOff,
-  ArrowLeft,
   UserPlus,
+  ArrowLeft,
 } from 'lucide-react'
-import Link from 'next/link'
 
 export default function DaftarPage() {
   const router = useRouter()
@@ -35,73 +35,47 @@ export default function DaftarPage() {
 
   const handleDaftar = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
     setErrorMsg('')
     setSuccessMsg('')
 
-    // Client-side validation
-    if (!fullName.trim() || fullName.trim().length < 3) {
-      setErrorMsg('Sila masukkan nama penuh yang sah (sekurang-kurangnya 3 aksara).')
-      return
-    }
-    if (password.length < 8) {
-      setErrorMsg('Kata laluan mestilah sekurang-kurangnya 8 aksara.')
-      return
-    }
     if (password !== confirmPassword) {
       setErrorMsg('Kata laluan dan pengesahan kata laluan tidak sepadan.')
-      return
-    }
-    if (!agreed) {
-      setErrorMsg('Sila persetujui Terma dan Syarat Penggunaan sebelum meneruskan.')
+      setLoading(false)
       return
     }
 
-    setLoading(true)
+    if (password.length < 8) {
+      setErrorMsg('Kata laluan mestilah sekurang-kurangnya 8 aksara.')
+      setLoading(false)
+      return
+    }
 
     try {
-      // Step 1: Create auth account via Supabase Auth
+      // Step 1: Sign up user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: fullName,
+            full_name: fullName.trim(),
+            role: 'entrepreneur',
           },
         },
       })
 
       if (error) {
-        const msg = error.message?.toLowerCase() || ''
-        const status = (error as any)?.status
-
-        if (status === 429 || msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('over_email_send_rate_limit') || msg.includes('email rate limit')) {
-          throw new Error(
-            'Terlalu banyak percubaan pendaftaran. Sila tunggu beberapa minit sebelum cuba semula. ' +
-            '(Had Supabase: maksimum 4 pendaftaran/jam per IP)'
-          )
+        if (error.status === 429 || error.message.includes('Too many requests')) {
+          throw new Error('Terlalu banyak percubaan pendaftaran. Sila cuba lagi sebentar lagi.')
         }
-        if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('user already registered')) {
-          throw new Error('Alamat e-mel ini sudah didaftarkan. Sila log masuk atau gunakan e-mel lain.')
-        }
-        if (msg.includes('invalid email') || msg.includes('email address') || msg.includes('valid email')) {
-          throw new Error('Format e-mel tidak sah. Sila semak semula alamat e-mel anda.')
-        }
-        if (msg.includes('password') && msg.includes('6')) {
-          throw new Error('Kata laluan terlalu pendek. Supabase memerlukan sekurang-kurangnya 6 aksara.')
-        }
-        throw new Error(error.message || 'Ralat semasa mendaftar akaun.')
+        throw new Error(error.message)
       }
 
-
       if (!data.user) {
-        throw new Error('Gagal mencipta akaun. Sila cuba lagi.')
+        throw new Error('Gagal mendaftar pengguna.')
       }
 
       // Step 2: Insert profile via SERVER-SIDE API route using admin client.
-      // We CANNOT insert directly from the browser here because:
-      //   - When email confirmation is ENABLED: no session exists → auth.uid() = null → RLS 403
-      //   - When email confirmation is DISABLED: session exists but brief race condition can still occur
-      // The API route uses SUPABASE_SERVICE_ROLE_KEY which bypasses RLS safely on the server.
       const profileRes = await fetch('/api/auth/register-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -114,11 +88,8 @@ export default function DaftarPage() {
 
       if (!profileRes.ok) {
         const profileErrData = await profileRes.json().catch(() => ({}))
-        // If 404 it means the DB trigger already handled it — that's fine
         if (profileRes.status !== 404 && profileRes.status !== 409) {
           console.warn('[daftar] Profile API returned:', profileRes.status, profileErrData)
-          // Non-fatal: the DB trigger (handle_new_user) is a fallback
-          // Only show error to user if it's a genuine server error
           if (profileRes.status >= 500) {
             throw new Error(
               profileErrData?.error ||
@@ -130,11 +101,9 @@ export default function DaftarPage() {
 
       // Step 3: Redirect based on whether session is immediately available
       if (data.session) {
-        // Email confirmation is DISABLED — user is logged in immediately
         setSuccessMsg('Akaun berjaya didaftarkan! Mengalihkan ke dashboard...')
         setTimeout(() => router.push('/usahawan'), 1500)
       } else {
-        // Email confirmation is ENABLED — user must verify email first
         setSuccessMsg(
           'Akaun berjaya didaftarkan! Sila semak e-mel anda untuk mengesahkan alamat e-mel sebelum log masuk.'
         )
@@ -143,7 +112,6 @@ export default function DaftarPage() {
       setErrorMsg(err.message || 'Ralat pendaftaran berlaku.')
     } finally {
       setLoading(false)
-
     }
   }
 
@@ -151,24 +119,24 @@ export default function DaftarPage() {
     if (!password) return null
     if (password.length < 6) return { level: 'lemah', color: 'bg-rose-500', width: 'w-1/3' }
     if (password.length < 10) return { level: 'sederhana', color: 'bg-amber-400', width: 'w-2/3' }
-    return { level: 'kukuh', color: 'bg-teal-400', width: 'w-full' }
+    return { level: 'kukuh', color: 'bg-mara-red', width: 'w-full' }
   }
   const strength = passwordStrength()
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6 bg-slate-950 text-gray-100 min-h-screen relative overflow-hidden">
       {/* Decorative glowing blobs */}
-      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-cyan-500/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-teal-500/5 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-mara-gold/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-mara-red/5 blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative z-10 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold mb-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-mara-gold/10 border border-mara-gold/20 text-mara-gold text-xs font-semibold mb-1">
             <Sparkles className="w-3.5 h-3.5 animate-pulse" />
             <span>Portal Kebangsaan MARA</span>
           </div>
-          <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-black tracking-tight bg-gradient-to-r from-mara-red to-mara-gold bg-clip-text text-transparent">
             Daftar Akaun Usahawan
           </h1>
           <p className="text-xs text-gray-400">
@@ -178,7 +146,7 @@ export default function DaftarPage() {
 
         {/* Role indicator */}
         <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-950 border border-slate-800">
-          <User className="w-4 h-4 text-teal-400 shrink-0" />
+          <User className="w-4 h-4 text-mara-red shrink-0" />
           <div>
             <p className="text-xs font-bold text-gray-300">Akaun Usahawan</p>
             <p className="text-[10px] text-gray-500">Khusus untuk usahawan Bumiputera yang ingin memohon pembiayaan MARA</p>
@@ -195,7 +163,7 @@ export default function DaftarPage() {
 
         {/* Success */}
         {successMsg && (
-          <div className="p-3 bg-teal-500/10 border border-teal-500/20 rounded-xl flex items-start gap-2.5 text-teal-400 text-xs leading-relaxed">
+          <div className="p-3 bg-mara-red/10 border border-mara-red/20 rounded-xl flex items-start gap-2.5 text-mara-red text-xs leading-relaxed">
             <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{successMsg}</span>
           </div>
@@ -216,7 +184,7 @@ export default function DaftarPage() {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-200 outline-none focus:border-teal-400 transition-colors"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-200 outline-none focus:border-mara-red transition-colors"
                   placeholder="cth: Mohamad Ali bin Abdullah"
                 />
               </div>
@@ -235,7 +203,7 @@ export default function DaftarPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-200 outline-none focus:border-teal-400 transition-colors"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-200 outline-none focus:border-mara-red transition-colors"
                   placeholder="cth: usahawan@email.com"
                 />
               </div>
@@ -254,7 +222,7 @@ export default function DaftarPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-200 outline-none focus:border-teal-400 transition-colors"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-200 outline-none focus:border-mara-red transition-colors"
                   placeholder="Sekurang-kurangnya 8 aksara"
                 />
                 <button
@@ -293,7 +261,7 @@ export default function DaftarPage() {
                   className={`w-full bg-slate-950 border rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-200 outline-none transition-colors ${
                     confirmPassword && password !== confirmPassword
                       ? 'border-rose-500/50 focus:border-rose-400'
-                      : 'border-slate-800 focus:border-teal-400'
+                      : 'border-slate-800 focus:border-mara-red'
                   }`}
                   placeholder="Ulangi kata laluan"
                 />
@@ -310,7 +278,7 @@ export default function DaftarPage() {
                 <p className="text-[10px] text-rose-400">Kata laluan tidak sepadan.</p>
               )}
               {confirmPassword && password === confirmPassword && (
-                <p className="text-[10px] text-teal-400">✓ Kata laluan sepadan.</p>
+                <p className="text-[10px] text-mara-red">✓ Kata laluan sepadan.</p>
               )}
             </div>
 
@@ -321,11 +289,11 @@ export default function DaftarPage() {
                 type="checkbox"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-0.5 accent-teal-400 w-4 h-4 shrink-0 cursor-pointer"
+                className="mt-0.5 accent-mara-red w-4 h-4 shrink-0 cursor-pointer"
               />
               <label htmlFor="daftar-terma" className="text-[11px] text-gray-400 leading-relaxed cursor-pointer">
                 Saya bersetuju dengan{' '}
-                <span className="text-teal-400">Terma dan Syarat Penggunaan</span>{' '}
+                <span className="text-mara-gold">Terma dan Syarat Penggunaan</span>{' '}
                 portal MARA AI-Advisor dan memahami bahawa maklumat yang diberikan adalah untuk tujuan semakan kelayakan sahaja.
               </label>
             </div>
@@ -335,11 +303,11 @@ export default function DaftarPage() {
               id="daftar-submit"
               type="submit"
               disabled={loading || !agreed}
-              className="w-full py-3 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition shadow-md shadow-teal-500/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 bg-gradient-to-r from-mara-red to-mara-gold text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow-md shadow-mara-red/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
-                  <span className="w-3.5 h-3.5 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   <span>Mendaftar...</span>
                 </>
               ) : (
@@ -356,7 +324,7 @@ export default function DaftarPage() {
         <div className="text-center">
           <Link
             href="/login"
-            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-teal-400 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-mara-gold transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Sudah ada akaun? Log Masuk</span>

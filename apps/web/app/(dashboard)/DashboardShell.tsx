@@ -47,6 +47,7 @@ export default function DashboardShell({ profile, children }: DashboardShellProp
   if (profile.role === 'entrepreneur') {
     menuItems.push(
       { name: 'Konsol Kelayakan', href: '/usahawan', icon: LayoutDashboard },
+      { name: 'Profil Syarikat', href: '/usahawan/syarikat', icon: Landmark },
       { name: 'Skim Pembiayaan', href: '/loans', icon: CreditCard },
       { name: 'Profil & Tetapan', href: '/tetapan', icon: Settings }
     )
@@ -67,7 +68,7 @@ export default function DashboardShell({ profile, children }: DashboardShellProp
       {/* Mobile Top Bar — sticky so content scrolls below it */}
       <div className="md:hidden flex items-center justify-between px-4 py-3.5 bg-slate-900/90 border-b border-slate-800 w-full z-30 backdrop-blur-md sticky top-0">
         <div className="flex items-center gap-2">
-          <Landmark className="w-5 h-5 text-teal-400" />
+          <Landmark className="w-5 h-5 text-mara-red" />
           <span className="font-extrabold text-sm text-white">MARA AI-Advisor</span>
         </div>
         <button
@@ -97,8 +98,8 @@ export default function DashboardShell({ profile, children }: DashboardShellProp
         <div className="space-y-8">
           {/* Brand Logo */}
           <div className="flex items-center gap-2.5 border-b border-slate-800 pb-5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-400 flex items-center justify-center shadow-lg shadow-teal-500/20 shrink-0">
-              <Landmark className="w-5 h-5 text-slate-950" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-mara-red to-mara-gold flex items-center justify-center shadow-lg shadow-mara-red/20 shrink-0">
+              <Landmark className="w-5 h-5 text-white" />
             </div>
             <div>
               <span className="font-black text-sm text-white block leading-none">MARA AI-Advisor</span>
@@ -119,7 +120,7 @@ export default function DashboardShell({ profile, children }: DashboardShellProp
                   style={{ animationDelay: `${index * 60}ms` }}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all animate-slide-in-left ${
                     active
-                      ? 'bg-gradient-to-r from-teal-400 to-cyan-400 text-slate-950 shadow-md shadow-teal-500/20'
+                      ? 'bg-gradient-to-r from-mara-red to-mara-gold text-white shadow-md shadow-mara-red/20'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`}
                 >
@@ -135,12 +136,12 @@ export default function DashboardShell({ profile, children }: DashboardShellProp
         {/* User info & Logout */}
         <div className="space-y-3 pt-4 border-t border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-700 flex items-center justify-center text-teal-400 font-black text-sm shrink-0">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-700 flex items-center justify-center text-mara-red font-black text-sm shrink-0">
               {profile.name?.charAt(0)?.toUpperCase() || <User className="w-4 h-4" />}
             </div>
             <div className="truncate">
               <span className="text-xs font-bold text-slate-200 block truncate">{profile.name || 'Pengguna'}</span>
-              <span className="text-[10px] text-teal-400/80 block truncate font-semibold">{roleLabel}</span>
+              <span className="text-[10px] text-mara-gold block truncate font-semibold">{roleLabel}</span>
             </div>
           </div>
 

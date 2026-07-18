@@ -1,47 +1,37 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Landmark, User, ShieldAlert, KeyRound, Mail, Sparkles, Eye, EyeOff, UserPlus, HelpCircle, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
+import {
+  Mail,
+  KeyRound,
+  Eye,
+  EyeOff,
+  User,
+  Landmark,
+  Sparkles,
+  ShieldAlert,
+  HelpCircle,
+  CheckCircle,
+  UserPlus,
+} from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-
-        if (profile) {
-          if (profile.role === 'admin' || profile.role === 'mara_officer') {
-            router.push('/pegawai')
-          } else if (profile.role === 'entrepreneur') {
-            router.push('/usahawan')
-          } else {
-            router.push('/')
-          }
-        }
-      }
-    }
-    checkSession()
-  }, [supabase, router])
-
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<'entrepreneur' | 'mara_officer'>('entrepreneur')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [forgotSent, setForgotSent] = useState(false)
+
+  // Forgot password states
   const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,60 +45,65 @@ export default function LoginPage() {
       })
 
       if (error) {
-        const msg = error.message?.toLowerCase() || ''
-        const status = (error as any)?.status
-
-        if (status === 429 || msg.includes('rate limit') || msg.includes('too many requests')) {
-          throw new Error('Terlalu banyak percubaan log masuk. Sila tunggu beberapa minit sebelum cuba semula.')
+        // Specific error handling for common Supabase failures
+        if (error.message.includes('Email not confirmed')) {
+          throw new Error('E-mel anda belum disahkan. Sila semak peti masuk anda untuk pautan pengesahan.')
         }
-        if (msg.includes('email not confirmed') || msg.includes('not confirmed')) {
-          throw new Error(
-            'E-mel anda belum disahkan. Sila semak peti masuk e-mel anda dan klik pautan pengesahan. ' +
-            'Jika tidak menerima e-mel, semak folder Spam.'
-          )
+        if (error.status === 429 || error.message.includes('Too many requests')) {
+          throw new Error('Terlalu banyak percubaan log masuk. Sila cuba lagi sebentar lagi.')
         }
-        if (msg.includes('invalid login') || msg.includes('invalid credentials') || msg.includes('wrong password') || status === 400) {
-          throw new Error('E-mel atau kata laluan salah. Sila semak semula dan cuba lagi.')
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('E-mel atau kata laluan tidak sah.')
         }
-        throw new Error(error.message || 'Ralat semasa log masuk.')
+        throw new Error(error.message)
       }
 
-      if (!data.user) {
-        throw new Error('Log masuk gagal. Sila cuba lagi.')
-      }
-
-
+      // Check profile in DB
       const user = data.user
+      if (!user) throw new Error('Pengguna tidak ditemui.')
 
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single()
 
-      if (profileError || !profile) {
-        throw new Error('Profil pengguna tidak dijumpai.')
+      if (profileErr || !profile) {
+        throw new Error('Akaun dicipta tetapi profil gagal dimuatkan. Sila hubungi pentadbir.')
       }
 
-      if (profile.role === 'admin' || profile.role === 'mara_officer') {
+      // Role check constraint (officer vs entrepreneur)
+      if (role === 'mara_officer') {
+        if (profile.role !== 'mara_officer' && profile.role !== 'admin') {
+          throw new Error('Akses dinafikan. Akaun ini bukan akaun Pegawai MARA.')
+        }
+        // Save mock cookie for middleware backcompat
+        document.cookie = `imex_mock_session=${user.id}; path=/; max-age=86400; SameSite=Lax`
         router.push('/pegawai')
-      } else if (profile.role === 'entrepreneur') {
-        router.push('/usahawan')
       } else {
-        router.push('/')
+        if (profile.role !== 'entrepreneur') {
+          throw new Error('Akses dinafikan. Akaun ini bukan akaun Usahawan.')
+        }
+        document.cookie = `imex_mock_session=${user.id}; path=/; max-age=86400; SameSite=Lax`
+        router.push('/usahawan')
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Ralat log masuk berlaku.')
+      setErrorMsg(err.message || 'Log masuk gagal.')
+    } finally {
       setLoading(false)
     }
   }
 
   const handleForgotPassword = async () => {
     if (!email) {
-      setErrorMsg('Sila masukkan alamat e-mel anda dahulu untuk menetapkan semula kata laluan.')
+      setErrorMsg('Sila isi alamat e-mel anda terlebih dahulu.')
       return
     }
+
     setForgotLoading(true)
+    setForgotSent(false)
+    setErrorMsg('')
+
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -126,17 +121,17 @@ export default function LoginPage() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6 bg-slate-950 text-gray-100 min-h-screen relative overflow-hidden">
       {/* Decorative glowing blobs */}
-      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-cyan-500/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-teal-500/5 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-mara-gold/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-mara-red/5 blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md bg-slate-900 border border-slate-850 rounded-3xl p-8 shadow-2xl relative z-10 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold mb-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-mara-gold/10 border border-mara-gold/20 text-mara-gold text-xs font-semibold mb-1">
             <Sparkles className="w-3.5 h-3.5 animate-pulse" />
             <span>Portal Kebangsaan MARA</span>
           </div>
-          <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-mara-red to-mara-gold bg-clip-text text-transparent">
             MARA AI-Advisor
           </h1>
           <p className="text-xs text-gray-400">
@@ -151,7 +146,7 @@ export default function LoginPage() {
             onClick={() => setRole('entrepreneur')}
             className={`flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-xs font-bold transition-all ${
               role === 'entrepreneur'
-                ? 'bg-teal-400 text-slate-950'
+                ? 'bg-mara-red text-white'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
@@ -163,7 +158,7 @@ export default function LoginPage() {
             onClick={() => setRole('mara_officer')}
             className={`flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-xs font-bold transition-all ${
               role === 'mara_officer'
-                ? 'bg-teal-400 text-slate-950'
+                ? 'bg-mara-red text-white'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
@@ -189,7 +184,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-200 outline-none focus:border-teal-400"
+                className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-200 outline-none focus:border-mara-red"
                 placeholder="cth: usahawan@email.com"
               />
             </div>
@@ -205,7 +200,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-200 outline-none focus:border-teal-400"
+                className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-200 outline-none focus:border-mara-red"
                 placeholder="••••••••"
               />
               <button
@@ -222,15 +217,15 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={forgotLoading}
-                className="text-[10px] text-gray-500 hover:text-teal-400 transition-colors flex items-center gap-1"
+                className="text-[10px] text-gray-500 hover:text-mara-gold transition-colors flex items-center gap-1"
               >
                 <HelpCircle className="w-3 h-3" />
                 {forgotLoading ? 'Menghantar...' : 'Lupa Kata Laluan?'}
               </button>
             </div>
             {forgotSent && (
-              <div className="flex items-center gap-1.5 text-[10px] text-teal-400 mt-1">
-                <CheckCircle className="w-3 h-3" />
+              <div className="flex items-center gap-1.5 text-[10px] text-mara-gold mt-1">
+                <CheckCircle className="w-3 h-3 text-mara-gold" />
                 <span>E-mel penetapan semula kata laluan telah dihantar. Sila semak peti masuk anda.</span>
               </div>
             )}
@@ -239,21 +234,20 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition shadow-md shadow-teal-500/10 active:scale-95 disabled:opacity-50"
+            className="w-full py-3 bg-gradient-to-r from-mara-red to-mara-gold hover:from-mara-red/80 hover:to-mara-gold/80 text-white font-black rounded-xl text-xs uppercase tracking-wider transition shadow-md shadow-mara-red/10 active:scale-95 disabled:opacity-50"
           >
             {loading ? 'Sila tunggu...' : 'Log Masuk'}
           </button>
         </form>
 
-
         {/* Daftar link */}
         <div className="text-center border-t border-slate-800 pt-4">
           <Link
             href="/daftar"
-            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-teal-400 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-mara-gold transition-colors"
           >
             <UserPlus className="w-3.5 h-3.5" />
-            <span>Belum ada akaun? <span className="text-teal-400 font-bold">Daftar sekarang</span></span>
+            <span>Belum ada akaun? <span className="text-mara-gold font-bold">Daftar sekarang</span></span>
           </Link>
         </div>
       </div>
