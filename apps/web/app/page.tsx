@@ -112,7 +112,7 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="w-full py-5 border-t border-white/5 text-center text-[10px] text-gray-700 relative z-10 bg-navy-950/80">
+      <footer className="w-full py-5 border-t border-white/5 text-center text-[10px] text-gray-700 bg-navy-950">
         &copy; 2026 MARA AI-Advisor. Hak Cipta Terpelihara. Dibangunkan untuk Korporat MARA Berhad.
       </footer>
     </div>

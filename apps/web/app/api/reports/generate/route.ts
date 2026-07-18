@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getFeasibilityTier, getGuardrailBlockedTerms } from '@/lib/config'
 import { NextResponse } from 'next/server'
 import { generateBusinessReport } from '@/lib/gemini'
+import { getModel } from '@/lib/openrouter'
 import { runGuardrail } from '@services/guardrail'
 import { z } from 'zod'
 
@@ -197,7 +198,7 @@ export async function POST(request: Request) {
           pitch_script: finalReportData.pitch_script,
           grant_notes: finalReportData.grant_notes,
           generated_at: new Date().toISOString(),
-          model_version: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+          model_version: getModel(),
         },
         { onConflict: 'project_id' }
       )

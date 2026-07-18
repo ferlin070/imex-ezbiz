@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       supabase
         .from('business_documents')
         .select('doc_type')
-        .eq('project_id', projectId),
+        .or(`project_id.eq.${projectId},owner_user_id.eq.${user.id}`),
     ])
 
     // 5. Run deterministic rules engine (synchronous — fast)

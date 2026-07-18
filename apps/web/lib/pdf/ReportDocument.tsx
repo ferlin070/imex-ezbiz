@@ -158,8 +158,6 @@ interface ReportDocumentProps {
     pitch_script: string
     grant_notes: {
       mara: string
-      mdec: string
-      tekun: string
     }
     generated_at: string
   }
@@ -306,14 +304,6 @@ export default function ReportDocument({ project, report }: ReportDocumentProps)
           <Text style={styles.bulletText}>
             <Text style={{ fontWeight: 'bold', color: '#0f172a' }}>MARA: </Text>
             {report.grant_notes.mara}
-          </Text>
-          <Text style={styles.bulletText}>
-            <Text style={{ fontWeight: 'bold', color: '#0f172a' }}>TEKUN: </Text>
-            {report.grant_notes.tekun}
-          </Text>
-          <Text style={styles.bulletText}>
-            <Text style={{ fontWeight: 'bold', color: '#0f172a' }}>MDEC / Cradle: </Text>
-            {report.grant_notes.mdec}
           </Text>
         </View>
 

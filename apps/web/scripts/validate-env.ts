@@ -5,8 +5,12 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url('NEXT_PUBLIC_SUPABASE_URL mesti URL yang sah.'),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(10, 'NEXT_PUBLIC_SUPABASE_ANON_KEY mesti sekurang-kurangnya 10 aksara.'),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(10, 'SUPABASE_SERVICE_ROLE_KEY mesti sekurang-kurangnya 10 aksara.'),
-  GEMINI_API_KEY: z.string().min(5, 'GEMINI_API_KEY mesti sekurang-kurangnya 5 aksara.'),
-  GEMINI_MODEL: z.string().optional().default('gemini-2.0-flash')
+  AI_API_KEY: z.string().min(5, 'AI_API_KEY mesti sekurang-kurangnya 5 aksara.'),
+  AI_MODEL: z.string().optional().default('openai/gpt-4o-mini'),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().optional()
+}).refine(d => d.AI_API_KEY || d.GEMINI_API_KEY, {
+  message: 'Sama ada AI_API_KEY atau GEMINI_API_KEY mesti ditetapkan.'
 })
 
 // Also check for known placeholder values
@@ -27,7 +31,7 @@ function validate(env: Record<string, unknown>) {
     process.exit(1)
   }
   // Check placeholders on required keys
-  const requiredKeys = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'GEMINI_API_KEY']
+  const requiredKeys = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'AI_API_KEY']
   for (const key of requiredKeys) {
     const val = env[key]
     if (typeof val === 'string' && isPlaceholder(val)) {
