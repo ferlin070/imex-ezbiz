@@ -76,7 +76,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     padding: 8,
-    minHeight: 70,
   },
   cardTitle: {
     fontWeight: 'bold',
@@ -297,7 +296,7 @@ export default function ReportDocument({ project, report }: ReportDocumentProps)
 
         {/* Section 2: SWOT Analysis */}
         <Text style={styles.sectionTitle}>1. Analisis SWOT Perniagaan</Text>
-        <View style={styles.grid2} wrap={false}>
+        <View style={styles.grid2}>
           <View style={styles.col2}>
             <View style={styles.card}>
               <Text style={styles.cardTitleGreen}>Kekuatan (Strengths)</Text>
@@ -322,7 +321,7 @@ export default function ReportDocument({ project, report }: ReportDocumentProps)
           </View>
         </View>
 
-        <View style={styles.grid2} wrap={false}>
+        <View style={styles.grid2}>
           <View style={styles.col2}>
             <View style={styles.card}>
               <Text style={styles.cardTitleBlue}>Peluang (Opportunities)</Text>
@@ -349,7 +348,7 @@ export default function ReportDocument({ project, report }: ReportDocumentProps)
 
         {/* Section 3: Actionable Blueprint */}
         <Text style={styles.sectionTitle}>2. Blueprint Tindakan Komersial</Text>
-        <View style={styles.grid2} wrap={false}>
+        <View style={styles.grid2}>
           <View style={styles.col3}>
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Teknikal</Text>
@@ -400,6 +399,66 @@ export default function ReportDocument({ project, report }: ReportDocumentProps)
         </View>
 
         {/* Footer */}
+        <Text style={styles.footer}>
+          Laporan ini dijana secara automatik oleh platform IMEX AI-Biz. Nilai peratusan diukur berdasarkan penilaian purata panel juri pakar teknikal.
+        </Text>
+      </Page>
+
+      {/* Page 2 — Full blueprint, pitch & grants */}
+      <Page size="A4" style={styles.page}>
+        <View style={styles.topBar}>
+          <Text style={styles.topBarText}>IMEX AI-Biz — Laporan Komersial Inovasi (sambungan)</Text>
+        </View>
+
+        <Text style={styles.sectionTitle}>2. Blueprint Tindakan Komersial</Text>
+        <View style={styles.grid2}>
+          <View style={styles.col3}>
+            <View style={[styles.card, { minHeight: 0 }]}>
+              <Text style={styles.cardTitle}>Teknikal</Text>
+              {(report.blueprint.technical || []).map((item, idx) => (
+                <Text key={idx} style={[styles.bulletText, { marginBottom: 4 }]}>
+                  {idx + 1}. {item}
+                </Text>
+              ))}
+            </View>
+          </View>
+          <View style={styles.col3}>
+            <View style={[styles.card, { minHeight: 0 }]}>
+              <Text style={styles.cardTitle}>Pemasaran</Text>
+              {(report.blueprint.marketing || []).map((item, idx) => (
+                <Text key={idx} style={[styles.bulletText, { marginBottom: 4 }]}>
+                  {idx + 1}. {item}
+                </Text>
+              ))}
+            </View>
+          </View>
+          <View style={styles.col3}>
+            <View style={[styles.card, { minHeight: 0 }]}>
+              <Text style={styles.cardTitle}>Kewangan</Text>
+              {(report.blueprint.financial || []).map((item, idx) => (
+                <Text key={idx} style={[styles.bulletText, { marginBottom: 4 }]}>
+                  {idx + 1}. {item}
+                </Text>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>3. Skrip Pitching Pelabur (60 Saat)</Text>
+        <View style={styles.pitchBox}>
+          <Text style={{ fontSize: 9, lineHeight: 1.5, color: '#444' }}>
+            {report.pitch_script}
+          </Text>
+        </View>
+
+        <Text style={styles.sectionTitle}>4. Nota Kelayakan Geran & Pembiayaan</Text>
+        <View style={styles.pitchBox}>
+          <Text style={styles.bulletText}>
+            <Text style={{ fontWeight: 'bold', color: MARA_RED }}>MARA: </Text>
+            {report.grant_notes.mara}
+          </Text>
+        </View>
+
         <Text style={styles.footer}>
           Laporan ini dijana secara automatik oleh platform IMEX AI-Biz. Nilai peratusan diukur berdasarkan penilaian purata panel juri pakar teknikal.
         </Text>
