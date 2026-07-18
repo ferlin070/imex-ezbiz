@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { calculateFeasibility } from '@/lib/feasibility'
 import ProjectDashboardClient from './ProjectDashboardClient'
 
 interface PageProps {
@@ -18,12 +17,21 @@ export default async function ProjectPage({ params }: PageProps) {
   }
 
   // 2. Fetch project metadata
-  const { data: project, error: projectError } = await supabase
+  const { data: rawProject, error: projectError } = await supabase
     .from('projects')
-    .select('id, title, description, category, team_members, event_id, owner_user_id, mara_visible, state, institution, entry_type, score_source, application_status')
+    .select('id, title, description, category, team_members, owner_user_id, mara_visible, entry_type')
     .eq('id', projectId)
     .limit(1)
     .maybeSingle()
+
+  const project = rawProject ? {
+    ...rawProject,
+    event_id: null,
+    state: '',
+    institution: '',
+    score_source: 'direct',
+    application_status: 'submitted'
+  } : null
 
   if (projectError || !project) {
     return (
@@ -61,50 +69,44 @@ export default async function ProjectPage({ params }: PageProps) {
     redirect('/login')
   }
 
-  // 4. Fetch criteria & scores to calculate feasibility score server-side
-  let feasibilityResult = null
-  if (project.entry_type === 'direct') {
-    const { data: selfAss } = await supabase
-      .from('self_assessments')
-      .select('*')
-      .eq('project_id', projectId)
-      .limit(1)
-      .maybeSingle()
+  // 4. Fetch latest loan application to display rule engine results on project dashboard
+  const { data: latestApp } = await supabase
+    .from('loan_applications')
+    .select('eligibility_status, eligibility_output')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-    if (selfAss) {
-      const { calculateSelfAssessment } = require('@/lib/selfAssessment')
-      const calc = calculateSelfAssessment(selfAss.responses)
-      feasibilityResult = {
-        score: calc.score,
-        tier: calc.tier,
-        criteriaBreakdown: calc.breakdown.map((b: any) => ({
-          criteriaId: b.criteriaCode,
-          code: b.criteriaCode,
-          label: b.label,
-          average: b.score,
-          percentage: (b.score / b.maxScore) * 100,
-          max_score: b.maxScore
-        }))
-      }
-    } else {
-      feasibilityResult = {
-        score: 0,
-        tier: 'Perlu Bimbingan',
-        criteriaBreakdown: []
-      }
+  let feasibilityResult = {
+    score: 0,
+    tier: 'Perlu Bimbingan',
+    criteriaBreakdown: [] as any[]
+  }
+
+  if (latestApp && latestApp.eligibility_output && (latestApp.eligibility_output as any).criteria) {
+    const criteriaList = (latestApp.eligibility_output as any).criteria as any[]
+    const passedCount = criteriaList.filter(c => c.passed).length
+    const totalCount = criteriaList.length || 5
+    const score = Math.round((passedCount / totalCount) * 100)
+    
+    let tier: 'Sangat Berpotensi' | 'Layak Komersial' | 'Berpotensi Sederhana' | 'Perlu Bimbingan' = 'Perlu Bimbingan'
+    if (score >= 80) tier = 'Sangat Berpotensi'
+    else if (score >= 60) tier = 'Layak Komersial'
+    else if (score >= 40) tier = 'Berpotensi Sederhana'
+
+    feasibilityResult = {
+      score,
+      tier,
+      criteriaBreakdown: criteriaList.map(c => ({
+        criteriaId: c.name,
+        code: c.name,
+        label: c.name,
+        average: c.passed ? 10 : 0,
+        percentage: c.passed ? 100 : 0,
+        max_score: 10
+      }))
     }
-  } else {
-    const { data: criteria } = await supabase
-      .from('criteria')
-      .select('id, code, label, max_score, weight')
-      .eq('event_id', project.event_id)
-
-    const { data: scores } = await supabase
-      .from('scores')
-      .select('project_id, judge_id, criteria_id, score')
-      .eq('project_id', projectId)
-
-    feasibilityResult = calculateFeasibility(scores || [], criteria || [])
   }
 
   // 5. Fetch existing cached AI report (if it exists)
