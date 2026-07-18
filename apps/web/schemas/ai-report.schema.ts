@@ -15,9 +15,10 @@ export const AiReportSchema = z.object({
   pitch_script: z.string().min(10),
   grant_notes: z.object({
     mara: z.string().min(1),
-    mdec: z.string().min(1),
-    tekun: z.string().min(1),
+    // GUARDRAIL: mdec dan tekun dibuang — sistem ini domain-locked kepada MARA sahaja.
+    // Jangan tambah semula mdec atau tekun di sini.
   }),
+
 })
 
 export type AiReportInput = z.infer<typeof AiReportSchema>

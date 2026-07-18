@@ -5,10 +5,23 @@ import { getSystemPrompt } from './supabase/promptConfig'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
+// Updated input type: Takes MARA loan-relevant business context 
+// (replaces old FYP judging criteria breakdown)
+export interface BusinessContext {
+  title: string
+  description: string
+  category: string
+  businessName: string
+  stage: string
+  fundingRequested: number
+  targetMarket: string
+  usp: string
+  eligibilityStatus: string
+  eligibilityCriteria: { label: string; passed: boolean }[]
+}
+
 export async function generateBusinessReport(
-  project: { title: string; description: string; category: string; team_members: string[] },
-  criteriaBreakdown: { code: string; label: string; average: number; percentage: number }[],
-  feasibilityResult: { score: number; tier: string }
+  context: BusinessContext
 ): Promise<AiReportInput> {
   const model = genAI.getGenerativeModel({
     model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
@@ -37,14 +50,14 @@ export async function generateBusinessReport(
             required: ['technical', 'marketing', 'financial'],
           },
           pitch_script: { type: 'string' },
+          // GUARDRAIL: grant_notes hanya untuk MARA sahaja.
+          // Tiada TEKUN, MDEC, BSN, Bank Komersial, atau mana-mana pembiaya di luar ekosistem MARA.
           grant_notes: {
             type: 'object',
             properties: {
               mara: { type: 'string' },
-              mdec: { type: 'string' },
-              tekun: { type: 'string' },
             },
-            required: ['mara', 'mdec', 'tekun'],
+            required: ['mara'],
           },
         },
         required: ['swot', 'blueprint', 'pitch_script', 'grant_notes'],
@@ -53,28 +66,40 @@ export async function generateBusinessReport(
     systemInstruction: await getSystemPrompt(),
   })
 
-  // Build the prompt content
-  const prompt = `
-Nama Projek Inovasi: ${project.title}
-Kategori: ${project.category || 'Umum'}
-Deskripsi Projek: ${project.description || 'Tiada deskripsi.'}
-Senarai Ahli Kumpulan: ${project.team_members?.join(', ') || 'Tiada ahli berdaftar.'}
+  // Build prompt using MARA loan-relevant business context
+  const eligibilitySummary = context.eligibilityCriteria.length > 0
+    ? context.eligibilityCriteria
+        .map(c => `  * ${c.label}: ${c.passed ? '✓ Lulus' : '✗ Tidak Lulus'}`)
+        .join('\n')
+    : '  * Status kelayakan: ' + context.eligibilityStatus
 
-Keputusan Penilaian Juri Sebenar (Konteks Penting):
-- Indeks Kebolehsanaan (Biz-Feasibility Score): ${feasibilityResult.score}% (${feasibilityResult.tier})
-- Pecahan Skor Mengikut Kriteria:
-${criteriaBreakdown
-  .map(
-    (c) =>
-      `  * Kriteria ${c.code} (${c.label}): Purata Markah ${c.average} mata (Nisbah Kepuasan: ${c.percentage}%)`
-  )
-  .join('\n')}
+  const prompt = `
+Nama Perniagaan: ${context.businessName}
+Nama Produk / Projek: ${context.title}
+Kategori Perniagaan: ${context.category || 'Umum'}
+Penerangan Perniagaan: ${context.description || 'Tiada deskripsi.'}
+Peringkat Perniagaan: ${context.stage}
+Jumlah Pembiayaan Dimohon: RM${context.fundingRequested?.toLocaleString() || 'Tidak Dinyatakan'}
+Pasaran Sasaran: ${context.targetMarket || 'Pasaran tempatan'}
+Kelebihan Unik (USP): ${context.usp || 'Tiada maklumat.'}
+
+Keputusan Semakan Kelayakan MARA:
+- Status: ${context.eligibilityStatus}
+- Pecahan Kriteria Kelayakan:
+${eligibilitySummary}
+
+Arahan PENTING:
+- Analisis SWOT mesti berdasarkan perniagaan sebenar usahawan ini.
+- Blueprint tindakan mesti praktikal dan khusus kepada ekosistem MARA.
+- Nota geran HANYA untuk skim MARA (PUTRA, SPiM, SPIKE). 
+  JANGAN sebutkan TEKUN, MDEC, BSN, Maybank, CIMB, Bank Komersial, 
+  atau mana-mana pembiaya di luar MARA.
 
 Sila jana:
-1. SWOT: Sediakan tepat 3-4 mata berkualiti bagi setiap Strengths, Weaknesses, Opportunities, dan Threats.
-2. Actionable Blueprint: Berikan cadangan blueprint tindakan 3 fasa (Technical, Marketing, Financial) dengan tepat 3 langkah boleh dilaksanakan bagi setiap fasa.
-3. Skrip Elevator Pitch 60-saat: Skrip pembentangan pantas bertaraf profesional yang berstruktur Hook -> Problem -> Solution -> CTA.
-4. Nota Geran: Cadangan khusus untuk kriteria MARA, MDEC/Cradle, dan TEKUN/PUNB (1 ayat cadangan bagi setiap satu).
+1. SWOT: Tepat 3-4 mata berkualiti bagi setiap Strengths, Weaknesses, Opportunities, dan Threats.
+2. Actionable Blueprint: 3 fasa (Technical, Marketing, Financial), 3 langkah boleh dilaksanakan bagi setiap fasa.
+3. Skrip Elevator Pitch 60-saat: Berstruktur Hook → Problem → Solution → CTA.
+4. Nota Geran MARA: Cadangan khusus untuk skim pembiayaan MARA yang paling sesuai (1-2 ayat).
 `
 
   // Define generation function with 1 retry logic and mock fallback
@@ -101,53 +126,52 @@ Sila jana:
         return runGeneration(attempt + 1)
       }
       
-      // Attempt 2 failed: Fall back to simulated report
-      logger.warn("Gemini API key missing/invalid. Falling back to simulated MARA TVET business report generation...")
+      // Attempt 2 failed: Fall back to simulated report (MARA-only, guardrail compliant)
+      logger.warn("Gemini API key missing/invalid. Falling back to simulated MARA business report...")
       return {
         swot: {
           strengths: [
-            `Kepakaran teknikal tinggi dalam bidang ${project.category || 'inovasi'} hasil bimbingan para pensyarah IKM.`,
-            `Penyelesaian berasaskan IoT/teknologi yang sangat sejajar dengan inisiatif Industri 4.0.`,
-            `Prototaip berfungsi sepenuhnya dan sedia diuji di persekitaran sebenar.`
+            `Perniagaan dalam bidang ${context.category || 'inovasi'} dengan potensi pasaran yang jelas.`,
+            `Usahawan Bumiputera yang memenuhi kriteria asas kelayakan skim pembiayaan MARA.`,
+            `Pendekatan perniagaan yang berfokus kepada pasaran tempatan (${context.targetMarket || 'tempatan'}).`
           ],
           weaknesses: [
-            "Pendedahan pasaran yang masih terhad untuk strategi penjenamaan dan pengkomersialan.",
-            "Ketiadaan pasukan khusus untuk pemasaran digital dan pengurusan perhubungan pelanggan (CRM).",
-            "Kos perolehan bahan mentah mikroelektronik yang tidak menentu bagi pengeluaran skala kecil."
+            "Pendedahan jenama dalam pasaran masih terhad — strategi pemasaran digital perlu diperkukuhkan.",
+            "Aliran tunai perniagaan awal memerlukan pengurusan yang teliti bagi menampung kos operasi.",
+            "Keperluan dokumentasi dan pematuhan SSM/cukai perlu diselenggara dengan konsisten."
           ],
           opportunities: [
-            "Jaringan ekosistem keusahawanan MARA yang komprehensif (Dana, Latihan, & Inkubator).",
-            "Permintaan tinggi daripada industri tempatan terhadap automasi dan pendigitalan perniagaan.",
-            "Peluang perlindungan harta intelek (IP) di bawah bimbingan geran inovasi MARA."
+            "Ekosistem MARA menyediakan sokongan menyeluruh: pembiayaan, bimbingan perniagaan, dan jaringan pasaran.",
+            `Permintaan pasaran terhadap ${context.category || 'produk/perkhidmatan'} ini dijangka terus berkembang.`,
+            "Program inkubator dan akselerator MARA dapat membantu pengembangan kapasiti perniagaan."
           ],
           threats: [
-            "Kehadiran produk alternatif import yang lebih murah di pasaran terbuka.",
-            "Persaingan sengit daripada startup sedia ada yang mempunyai dana modal teroka yang kukuh.",
-            "Piawaian keselamatan industri tempatan yang ketat dan memerlukan pensijilan berbayar (SIRIM)."
+            "Persaingan daripada perniagaan sedia ada yang mempunyai asas pelanggan lebih kukuh.",
+            "Perubahan kadar bahan mentah atau kos operasi yang tidak dijangka.",
+            "Perubahan dalam polisi atau syarat kelayakan pembiayaan memerlukan penyesuaian berterusan."
           ]
         },
         blueprint: {
           technical: [
-            `Mewujudkan sistem pengeluaran produk ${project.title} skala kecil di fasiliti IKM Besut.`,
-            "Memohon persijilan keselamatan elektrik dan pematuhan standard SIRIM.",
-            "Menjalankan ujian ketahanan peranti (hardware reliability test) dalam tempoh 30 hari."
+            `Dokumentasikan proses kerja ${context.title} secara formal sebagai SOP perniagaan.`,
+            "Daftarkan hakmilik intelektual (IP) atau tanda niaga jika berkaitan dengan produk unik.",
+            "Kenal pasti keperluan teknologi dan peralatan yang perlu dinaik taraf dalam 6 bulan pertama."
           ],
           marketing: [
-            "Membina prototaip pembungkusan komersial yang mesra alam dan menarik.",
-            "Melancarkan video demo keberkesanan produk di TikTok, YouTube, dan LinkedIn.",
-            "Menghadiri Ekspo Keusahawanan MARA untuk mendapatkan maklum balas pelanggan sasaran."
+            "Bina profil perniagaan di platform digital (Facebook Business, Instagram, Google Business Profile).",
+            "Sediakan bahan pemasaran asas: brosur, kad nama, dan video produk/perkhidmatan pendek.",
+            "Hadiri program atau ekspo anjuran MARA untuk membina jaringan pelanggan dan rakan strategik."
           ],
           financial: [
-            "Menyusun unjuran aliran tunai operasi tahun pertama bagi pembuktian daya maju pasaran.",
-            "Memohon geran pembangunan produk awal melalui Skim PUTRA MARA.",
-            "Menetapkan harga jualan komersial yang memberikan margin keuntungan kasar sekurang-kurangnya 40%."
+            `Sediakan unjuran aliran tunai 12 bulan bagi permohonan pembiayaan RM${context.fundingRequested?.toLocaleString() || 0} ini.`,
+            "Buka akaun perniagaan berasingan daripada akaun peribadi untuk rekod kewangan yang lebih telus.",
+            "Tetapkan harga produk/perkhidmatan dengan margin keuntungan kasar sekurang-kurangnya 30-40%."
           ]
         },
-        pitch_script: `Assalamualaikum dan salam sejahtera. Keletihan memandu merupakan punca utama kemalangan jalan raya di Malaysia. Hari ini, kami memperkenalkan ${project.title} - sistem bantuan pemanduan pintar berasaskan IoT yang memantau keletihan pemandu secara masa nyata melalui sensor pergerakan mata. Apabila keletihan dikesan, amaran serta-merta akan dicetuskan. Dengan pasaran sasaran pengangkutan awam dan logistik di Malaysia yang bernilai ratusan juta ringgit, ${project.title} bukan sahaja menyelamatkan nyawa, malah meningkatkan kecekapan operasi syarikat logistik anda. Kami memohon pembiayaan geran MARA untuk membantu kami membawa inovasi ini dari bengkel IKM terus ke pasaran komersial. Terima kasih.`,
+        pitch_script: `Assalamualaikum. Perniagaan saya, ${context.businessName}, beroperasi dalam sektor ${context.category || 'perniagaan'} dengan tumpuan kepada ${context.targetMarket || 'pasaran tempatan'}. Produk atau perkhidmatan kami — ${context.title} — menawarkan ${context.usp || 'nilai unik kepada pelanggan kami'}. Kami telah melalui proses semakan kelayakan MARA dan bersedia membawa perniagaan ini ke peringkat seterusnya dengan sokongan pembiayaan RM${context.fundingRequested?.toLocaleString() || 0}. Dana ini akan digunakan untuk mengembangkan kapasiti operasi dan menembusi pasaran yang lebih luas. Kami memohon sokongan MARA untuk merealisasikan potensi penuh perniagaan ini. Terima kasih.`,
         grant_notes: {
-          mara: `Projek ${project.title} amat layak memohon Skim PUTRA/SPIKE MARA bagi pembangunan prototaip dan modal pusingan awal.`,
-          mdec: "Sesuai untuk memohon Geran Kandungan Digital MDEC kerana integrasi teknologi pintar.",
-          tekun: "Kelayakan di bawah Skim Pembiayaan TEKUN Belia Niaga bagi pembelian peralatan pembuatan."
+          // GUARDRAIL COMPLIANT: MARA only, no TEKUN/MDEC/Bank Komersial
+          mara: `Perniagaan ${context.businessName} layak dinilai untuk Skim Pembiayaan MARA yang sesuai (PUTRA Mikro atau SPiM) berdasarkan kategori perniagaan dan keperluan pembiayaan RM${context.fundingRequested?.toLocaleString() || 0}. Sila berbincang dengan Pegawai PMN MARA untuk pengesahan skim yang paling sesuai.`
         }
       }
     }

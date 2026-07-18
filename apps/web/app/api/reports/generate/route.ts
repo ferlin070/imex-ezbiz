@@ -1,8 +1,8 @@
 import { logger } from '@/lib/logger'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { calculateFeasibility } from '@/lib/feasibility'
 import { generateBusinessReport } from '@/lib/gemini'
+import { runGuardrail } from '@services/guardrail'
 import { z } from 'zod'
 
 const generateSchema = z.object({
@@ -28,10 +28,10 @@ export async function POST(request: Request) {
 
     const { projectId } = parsed.data
 
-    // 3. Fetch project and verify ownership (or if user is admin)
+    // 3. Fetch project — only query columns that exist in the current schema
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('id, title, description, category, team_members, event_id, owner_user_id')
+      .select('id, title, description, category, owner_user_id')
       .eq('id', projectId)
       .single()
 
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Projek tidak dijumpai.' }, { status: 404 })
     }
 
-    // Verify user owns this project or is admin
+    // 4. Verify user owns this project or is admin
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Akses dinafikan. Anda bukan pemilik projek ini.' }, { status: 403 })
     }
 
-    // 4. Rate Limiting: 1 request every 5 minutes per project
+    // 5. Rate Limiting: 1 request every 5 minutes per project
     const { data: existingReport } = await supabase
       .from('ai_reports')
       .select('generated_at')
@@ -77,50 +77,94 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Fetch all criteria and scores to compute feasibility score
-    const { data: criteria } = await supabase
-      .from('criteria')
-      .select('id, code, label, max_score, weight')
-      .eq('event_id', project.event_id)
-
-    const { data: scores } = await supabase
-      .from('scores')
-      .select('project_id, judge_id, criteria_id, score')
+    // 6. Fetch business profile and loan application for context
+    //    This replaces the old broken query to non-existent `criteria` and `scores` tables.
+    const { data: bizProfile } = await supabase
+      .from('business_profiles')
+      .select(
+        'business_name, entity_type, business_stage, funding_requested_myr, ' +
+        'target_market, unique_selling_point, is_bumiputera, owner_age, monthly_revenue_range'
+      )
       .eq('project_id', projectId)
+      .maybeSingle()
 
-    // Compute feasibility result server-side
-    const feasibilityResult = calculateFeasibility(scores || [], criteria || [])
+    const { data: loanApp } = await supabase
+      .from('loan_applications')
+      .select(
+        'eligibility_status, eligibility_output, requested_amount_myr, requested_tenure_months'
+      )
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-    // 6. Call Gemini AI to generate the report content
-    const reportData = await generateBusinessReport(
-      {
-        title: project.title,
-        description: project.description || '',
-        category: project.category || '',
-        team_members: project.team_members || [],
-      },
-      feasibilityResult.criteriaBreakdown,
-      {
-        score: feasibilityResult.score,
-        tier: feasibilityResult.tier,
+    // Build context for AI from real MARA loan eligibility data
+    const businessContext = {
+      title: project.title,
+      description: project.description || '',
+      category: project.category || 'Umum',
+      businessName: bizProfile?.business_name || project.title,
+      stage: bizProfile?.business_stage || 'operasi_baru',
+      fundingRequested: bizProfile?.funding_requested_myr || loanApp?.requested_amount_myr || 0,
+      targetMarket: bizProfile?.target_market || 'Pasaran tempatan',
+      usp: bizProfile?.unique_selling_point || '',
+      eligibilityStatus: loanApp?.eligibility_status || 'BELUM_DINILAI',
+      eligibilityCriteria: (loanApp?.eligibility_output as any)?.criteria || [],
+    }
+
+    // 7. Call Gemini AI to generate the report content using MARA-relevant context
+    const rawReportData = await generateBusinessReport(businessContext)
+
+    // 8. CRITICAL: Run guardrail on generated content to ensure MARA domain-lock
+    //    This strips any mention of TEKUN, MDEC, or non-MARA funders from the output.
+    const guardrailResult = runGuardrail(JSON.stringify(rawReportData))
+
+    let finalReportData = rawReportData
+    let guardrailPassed = guardrailResult.passed
+
+    if (!guardrailResult.passed) {
+      logger.warn(
+        `[Guardrail] AI report untuk projek ${projectId} gagal guardrail. ` +
+        `Sebab: ${guardrailResult.blockedReason || 'tidak diketahui'}. ` +
+        `Menggunakan output yang telah dibersihkan.`
+      )
+      // Attempt to re-parse the cleaned text back to structured data
+      try {
+        finalReportData = JSON.parse(guardrailResult.cleanText)
+      } catch {
+        // If re-parsing fails, use original but mark that guardrail flagged it
+        logger.error('[Guardrail] Gagal parse cleaned output — guna original data tetapi tandakan.')
+        guardrailPassed = false
       }
-    )
+    }
 
-    // 7. Upsert generated report (Using admin client to ensure system bypasses any restrictive RLS)
+    // 9. Compute a simple feasibility score from eligibility output
+    const eligibilityCriteria = (loanApp?.eligibility_output as any)?.criteria || []
+    const passedCount = eligibilityCriteria.filter((c: any) => c.passed).length
+    const totalCount = eligibilityCriteria.length || 5
+    const feasibilityScore = Math.round((passedCount / totalCount) * 100)
+    const feasibilityTier =
+      feasibilityScore >= 80 ? 'Sangat Berpotensi' :
+      feasibilityScore >= 60 ? 'Layak Komersial' :
+      feasibilityScore >= 40 ? 'Berpotensi Sederhana' :
+      'Perlu Bimbingan'
+
+    // 10. Upsert generated report using admin client (bypasses RLS for system write)
     const adminSupabase = createAdminClient()
     const { data: savedReport, error: upsertError } = await adminSupabase
       .from('ai_reports')
       .upsert(
         {
           project_id: projectId,
-          feasibility_score: feasibilityResult.score,
-          feasibility_tier: feasibilityResult.tier,
-          swot: reportData.swot,
-          blueprint: reportData.blueprint,
-          pitch_script: reportData.pitch_script,
-          grant_notes: reportData.grant_notes,
+          feasibility_score: feasibilityScore,
+          feasibility_tier: feasibilityTier,
+          swot: finalReportData.swot,
+          blueprint: finalReportData.blueprint,
+          pitch_script: finalReportData.pitch_script,
+          grant_notes: finalReportData.grant_notes,
           generated_at: new Date().toISOString(),
-          model_version: 'gemini-1.5-flash',
+          model_version: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+          guardrail_passed: guardrailPassed,
         },
         {
           onConflict: 'project_id',
@@ -130,7 +174,7 @@ export async function POST(request: Request) {
       .single()
 
     if (upsertError) {
-      logger.error('Upsert report error:', upsertError)
+      logger.error('Upsert ai_report error:', upsertError)
       return NextResponse.json({ error: 'Gagal menyimpan laporan AI.' }, { status: 500 })
     }
 
