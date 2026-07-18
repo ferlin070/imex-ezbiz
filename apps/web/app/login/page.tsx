@@ -54,9 +54,29 @@ export default function LoginPage() {
         password,
       })
 
-      if (error || !data.user) {
-        throw new Error('E-mel atau kata laluan salah. Sila cuba lagi.')
+      if (error) {
+        const msg = error.message?.toLowerCase() || ''
+        const status = (error as any)?.status
+
+        if (status === 429 || msg.includes('rate limit') || msg.includes('too many requests')) {
+          throw new Error('Terlalu banyak percubaan log masuk. Sila tunggu beberapa minit sebelum cuba semula.')
+        }
+        if (msg.includes('email not confirmed') || msg.includes('not confirmed')) {
+          throw new Error(
+            'E-mel anda belum disahkan. Sila semak peti masuk e-mel anda dan klik pautan pengesahan. ' +
+            'Jika tidak menerima e-mel, semak folder Spam.'
+          )
+        }
+        if (msg.includes('invalid login') || msg.includes('invalid credentials') || msg.includes('wrong password') || status === 400) {
+          throw new Error('E-mel atau kata laluan salah. Sila semak semula dan cuba lagi.')
+        }
+        throw new Error(error.message || 'Ralat semasa log masuk.')
       }
+
+      if (!data.user) {
+        throw new Error('Log masuk gagal. Sila cuba lagi.')
+      }
+
 
       const user = data.user
 

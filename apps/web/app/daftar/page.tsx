@@ -71,15 +71,27 @@ export default function DaftarPage() {
       })
 
       if (error) {
-        if (
-          error.message.toLowerCase().includes('already registered') ||
-          error.message.toLowerCase().includes('already been registered') ||
-          error.message.toLowerCase().includes('user already registered')
-        ) {
+        const msg = error.message?.toLowerCase() || ''
+        const status = (error as any)?.status
+
+        if (status === 429 || msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('over_email_send_rate_limit') || msg.includes('email rate limit')) {
+          throw new Error(
+            'Terlalu banyak percubaan pendaftaran. Sila tunggu beberapa minit sebelum cuba semula. ' +
+            '(Had Supabase: maksimum 4 pendaftaran/jam per IP)'
+          )
+        }
+        if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('user already registered')) {
           throw new Error('Alamat e-mel ini sudah didaftarkan. Sila log masuk atau gunakan e-mel lain.')
+        }
+        if (msg.includes('invalid email') || msg.includes('email address') || msg.includes('valid email')) {
+          throw new Error('Format e-mel tidak sah. Sila semak semula alamat e-mel anda.')
+        }
+        if (msg.includes('password') && msg.includes('6')) {
+          throw new Error('Kata laluan terlalu pendek. Supabase memerlukan sekurang-kurangnya 6 aksara.')
         }
         throw new Error(error.message || 'Ralat semasa mendaftar akaun.')
       }
+
 
       if (!data.user) {
         throw new Error('Gagal mencipta akaun. Sila cuba lagi.')
