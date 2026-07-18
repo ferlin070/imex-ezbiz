@@ -359,45 +359,59 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-slate-200">Produk & Inovasi Didaftarkan</h2>
             {!hasProjects ? (
-              <div className="p-8 text-center rounded-2xl bg-slate-900/10 border border-slate-850 text-slate-500 text-sm">
-                Tiada produk atau inovasi didaftarkan setakat ini.
+              <div className="py-16 text-center rounded-2xl bg-slate-900/10 border border-dashed border-slate-800 flex flex-col items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center">
+                  <Plus className="w-8 h-8 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-slate-300 font-bold text-sm">Tiada produk atau inovasi didaftarkan</p>
+                  <p className="text-slate-500 text-xs mt-1">Mulakan perjalanan kelayakan MARA anda dengan mendaftarkan produk atau inovasi pertama.</p>
+                </div>
+                <Link
+                  href="/usahawan?new=true"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-900 bg-teal-400 hover:bg-teal-300 rounded-xl transition active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Daftar Produk Pertama Saya
+                </Link>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {projects.map((p: any) => (
                   <div
                     key={p.id}
-                    className="p-5 rounded-2xl bg-slate-900/20 border border-slate-850 hover:border-slate-800 transition flex flex-col justify-between"
+                    className="group p-5 rounded-2xl bg-slate-900/30 border border-slate-800 hover:border-teal-500/30 hover:bg-slate-900/60 transition-all duration-200 flex flex-col justify-between animate-scale-in"
                   >
                     <div className="space-y-2">
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-[10px] font-bold text-teal-400 bg-teal-400/10 border border-teal-500/20 px-2 py-0.5 rounded uppercase">
+                        <span className="text-[10px] font-bold text-teal-400 bg-teal-400/10 border border-teal-500/20 px-2 py-0.5 rounded-lg uppercase tracking-wide">
                           {p.category || 'Umum'}
                         </span>
                         <Link
                           href={`/usahawan?editProjectId=${p.id}`}
-                          className="text-slate-400 hover:text-white text-xs font-bold flex items-center gap-1"
+                          className="text-slate-500 hover:text-teal-400 text-xs font-bold flex items-center gap-1 transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Edit
                         </Link>
                       </div>
-                      <h3 className="font-extrabold text-slate-200 text-base">{p.business_profiles?.business_name || p.title}</h3>
+                      <h3 className="font-extrabold text-slate-100 text-base leading-tight">{p.business_profiles?.business_name || p.title}</h3>
                       <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{p.description || 'Tiada keterangan.'}</p>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-900 flex justify-between items-center gap-3">
+                    <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center gap-3">
                       <Link
                         href={`/project/${p.id}`}
-                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-black text-slate-100 bg-slate-900 border border-slate-800 hover:bg-slate-850 rounded-xl transition"
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-300 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 hover:text-white rounded-xl transition"
                       >
-                        <FileText className="w-3.5 h-3.5 text-slate-400" />
-                        Analisis SWOT &amp; Pitch
+                        <FileText className="w-3.5 h-3.5 text-teal-400" />
+                        Analisis SWOT
                       </Link>
                       <Link
                         href={`/loans/apply/7bc6b4b4-02ba-4da8-963d-4c748c089cb1?amount=50000&tenure=60`}
-                        className="inline-flex items-center justify-center gap-1 px-3.5 py-2 text-xs font-black text-slate-900 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 rounded-xl transition"
+                        className="inline-flex items-center justify-center gap-1 px-3.5 py-2 text-xs font-black text-slate-900 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 rounded-xl transition shadow-sm shadow-teal-500/20"
                       >
+                        <ArrowRight className="w-3.5 h-3.5" />
                         Mohon Geran
                       </Link>
                     </div>
@@ -412,12 +426,27 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
             <h2 className="text-xl font-bold text-slate-200">Permohonan & Kelayakan MARA</h2>
 
             {!hasProjects ? (
-              <div className="p-8 text-center rounded-2xl bg-slate-900/10 border border-slate-850 text-slate-500 text-sm">
-                Sila daftarkan produk/inovasi pertama anda terlebih dahulu.
+              <div className="py-12 text-center rounded-2xl bg-slate-900/10 border border-dashed border-slate-800 flex flex-col items-center gap-3">
+                <Landmark className="w-10 h-10 text-slate-700" />
+                <div>
+                  <p className="text-slate-400 font-bold text-sm">Belum ada permohonan dibuat</p>
+                  <p className="text-slate-600 text-xs mt-1">Daftarkan produk terlebih dahulu, kemudian mohon skim pembiayaan MARA.</p>
+                </div>
               </div>
             ) : applications.length === 0 ? (
-              <div className="p-8 text-center rounded-2xl bg-slate-900/10 border border-slate-850 text-slate-500 text-sm">
-                Tiada permohonan pembiayaan dikesan. Klik &quot;Mohon Geran&quot; di atas kad produk untuk memulakan permohonan.
+              <div className="py-12 text-center rounded-2xl bg-slate-900/10 border border-dashed border-slate-800 flex flex-col items-center gap-3">
+                <FileText className="w-10 h-10 text-slate-700" />
+                <div>
+                  <p className="text-slate-400 font-bold text-sm">Tiada permohonan pembiayaan dikesan</p>
+                  <p className="text-slate-600 text-xs mt-1">Klik &ldquo;Mohon Geran&rdquo; pada kad produk anda untuk memulakan permohonan.</p>
+                </div>
+                <Link
+                  href="/loans"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-900 bg-teal-400 hover:bg-teal-300 rounded-xl transition active:scale-95"
+                >
+                  <Landmark className="w-3.5 h-3.5" />
+                  Lihat Skim Pembiayaan
+                </Link>
               </div>
             ) : (
               <div className="space-y-6">
