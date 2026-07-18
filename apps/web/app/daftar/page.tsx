@@ -59,7 +59,7 @@ export default function DaftarPage() {
     setLoading(true)
 
     try {
-      // Step 1: Create auth account
+      // Step 1: Create auth account via Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -71,7 +71,11 @@ export default function DaftarPage() {
       })
 
       if (error) {
-        if (error.message.includes('already registered')) {
+        if (
+          error.message.toLowerCase().includes('already registered') ||
+          error.message.toLowerCase().includes('already been registered') ||
+          error.message.toLowerCase().includes('user already registered')
+        ) {
           throw new Error('Alamat e-mel ini sudah didaftarkan. Sila log masuk atau gunakan e-mel lain.')
         }
         throw new Error(error.message || 'Ralat semasa mendaftar akaun.')
@@ -81,30 +85,44 @@ export default function DaftarPage() {
         throw new Error('Gagal mencipta akaun. Sila cuba lagi.')
       }
 
-      // Step 2: Insert profile record with entrepreneur role
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          email: data.user.email!,
+      // Step 2: Insert profile via SERVER-SIDE API route using admin client.
+      // We CANNOT insert directly from the browser here because:
+      //   - When email confirmation is ENABLED: no session exists → auth.uid() = null → RLS 403
+      //   - When email confirmation is DISABLED: session exists but brief race condition can still occur
+      // The API route uses SUPABASE_SERVICE_ROLE_KEY which bypasses RLS safely on the server.
+      const profileRes = await fetch('/api/auth/register-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: data.user.id,
+          email: data.user.email,
           name: fullName.trim(),
-          role: 'entrepreneur',
-        })
+        }),
+      })
 
-      if (profileError) {
-        // Profile might already be created by database trigger — that's OK
-        if (!profileError.message.includes('duplicate') && !profileError.message.includes('unique')) {
-          throw new Error('Akaun dicipta tetapi profil gagal disimpan. Sila hubungi pentadbir.')
+      if (!profileRes.ok) {
+        const profileErrData = await profileRes.json().catch(() => ({}))
+        // If 404 it means the DB trigger already handled it — that's fine
+        if (profileRes.status !== 404 && profileRes.status !== 409) {
+          console.warn('[daftar] Profile API returned:', profileRes.status, profileErrData)
+          // Non-fatal: the DB trigger (handle_new_user) is a fallback
+          // Only show error to user if it's a genuine server error
+          if (profileRes.status >= 500) {
+            throw new Error(
+              profileErrData?.error ||
+              'Akaun dicipta tetapi profil gagal disimpan. Sila hubungi pentadbir atau cuba log masuk.'
+            )
+          }
         }
       }
 
-      // Check if email confirmation is required
+      // Step 3: Redirect based on whether session is immediately available
       if (data.session) {
-        // Logged in immediately (email confirmation disabled in project settings)
+        // Email confirmation is DISABLED — user is logged in immediately
         setSuccessMsg('Akaun berjaya didaftarkan! Mengalihkan ke dashboard...')
         setTimeout(() => router.push('/usahawan'), 1500)
       } else {
-        // Email confirmation required
+        // Email confirmation is ENABLED — user must verify email first
         setSuccessMsg(
           'Akaun berjaya didaftarkan! Sila semak e-mel anda untuk mengesahkan alamat e-mel sebelum log masuk.'
         )
@@ -113,6 +131,7 @@ export default function DaftarPage() {
       setErrorMsg(err.message || 'Ralat pendaftaran berlaku.')
     } finally {
       setLoading(false)
+
     }
   }
 
