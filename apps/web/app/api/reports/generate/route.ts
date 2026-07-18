@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { getFeasibilityTier, getGuardrailBlockedTerms } from '@/lib/config'
 import { NextResponse } from 'next/server'
 import { generateBusinessReport } from '@/lib/gemini'
 import { runGuardrail } from '@services/guardrail'
@@ -9,27 +10,23 @@ import { z } from 'zod'
 // runGuardrail() returns cleanText as a plain BM sentence (not JSON),
 // so JSON.parse(cleanText) always fails and the unsanitized rawReportData is used.
 // This function recursively scans every string field and redacts blocked terms.
-const MARA_BLOCKED_TERMS = [
-  'tekun', 'mdec', 'bsn', 'punb', 'perbadanan nasional',
-  'teraju', 'superb', 'cradle', 'magic', 'mtdc', 'khazanah'
-]
 
-function sanitizeReportObject(obj: unknown): unknown {
+async function sanitizeReportObject(obj: unknown): Promise<unknown> {
+  const blockedTerms = await getGuardrailBlockedTerms()
   if (typeof obj === 'string') {
     const lower = obj.toLowerCase()
-    const hasBlocked = MARA_BLOCKED_TERMS.some(term => lower.includes(term))
+    const hasBlocked = blockedTerms.some(term => lower.includes(term))
     return hasBlocked ? '[KANDUNGAN DIBUANG — MARA GUARDRAIL]' : obj
   }
   if (Array.isArray(obj)) {
-    return obj.map(item => sanitizeReportObject(item))
+    return Promise.all(obj.map(item => sanitizeReportObject(item)))
   }
   if (typeof obj === 'object' && obj !== null) {
-    return Object.fromEntries(
-      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
-        k,
-        sanitizeReportObject(v),
-      ])
-    )
+    const result: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      result[k] = await sanitizeReportObject(v)
+    }
+    return result
   }
   return obj
 }
@@ -73,7 +70,7 @@ export async function POST(request: Request) {
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     const isOwner = project.owner_user_id === user.id
     const isAdmin = profile?.role === 'admin'
@@ -163,10 +160,9 @@ export async function POST(request: Request) {
 
     // 8. CRITICAL: Run guardrail on generated content to ensure MARA domain-lock
     //    This strips any mention of TEKUN, MDEC, or non-MARA funders from the output.
-    const guardrailResult = runGuardrail(JSON.stringify(rawReportData))
+    const guardrailResult = await runGuardrail(JSON.stringify(rawReportData))
 
     let finalReportData = rawReportData
-    let guardrailPassed = guardrailResult.passed
 
     if (!guardrailResult.passed) {
       logger.warn(
@@ -177,7 +173,7 @@ export async function POST(request: Request) {
       // R4 FIX: Use recursive field-level sanitizer instead of JSON.parse(cleanText).
       // cleanText is a plain BM sentence — JSON.parse would always throw here,
       // causing the unsanitized rawReportData to be saved to the database.
-      finalReportData = sanitizeReportObject(rawReportData) as typeof rawReportData
+      finalReportData = (await sanitizeReportObject(rawReportData)) as typeof rawReportData
     }
 
     // 9. Compute a simple feasibility score from eligibility output
@@ -185,11 +181,7 @@ export async function POST(request: Request) {
     const passedCount = eligibilityCriteria.filter((c: any) => c.passed).length
     const totalCount = eligibilityCriteria.length || 5
     const feasibilityScore = Math.round((passedCount / totalCount) * 100)
-    const feasibilityTier =
-      feasibilityScore >= 80 ? 'Sangat Berpotensi' :
-      feasibilityScore >= 60 ? 'Layak Komersial' :
-      feasibilityScore >= 40 ? 'Berpotensi Sederhana' :
-      'Perlu Bimbingan'
+    const feasibilityTier = await getFeasibilityTier(feasibilityScore)
 
     // 10. Upsert generated report using admin client (bypasses RLS for system write)
     const adminSupabase = createAdminClient()
@@ -205,15 +197,17 @@ export async function POST(request: Request) {
           pitch_script: finalReportData.pitch_script,
           grant_notes: finalReportData.grant_notes,
           generated_at: new Date().toISOString(),
-          model_version: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
-          guardrail_passed: guardrailPassed,
+          model_version: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
         },
-        {
-          onConflict: 'project_id',
-        }
+        { onConflict: 'project_id' }
       )
       .select()
       .single()
+
+    if (upsertError) {
+      logger.error('Upsert ai_report error:', upsertError)
+      return NextResponse.json({ error: 'Gagal menyimpan laporan AI.' }, { status: 500 })
+    }
 
     if (upsertError) {
       logger.error('Upsert ai_report error:', upsertError)

@@ -43,7 +43,7 @@ Jana penjelasan keputusan dan pelan tindakan langkah demi langkah secara tersusu
 
   try {
     const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
       systemInstruction,
     })
 

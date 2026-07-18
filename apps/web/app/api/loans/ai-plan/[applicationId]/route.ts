@@ -76,7 +76,7 @@ export async function POST(request: Request, context: RouteContext) {
     })
 
     // 7. Run guardrail on the action plan text
-    const guardrailResult = runGuardrail(rawActionPlan)
+    const guardrailResult = await runGuardrail(rawActionPlan)
 
     const finalPlan = guardrailResult.passed ? rawActionPlan : guardrailResult.cleanText
 

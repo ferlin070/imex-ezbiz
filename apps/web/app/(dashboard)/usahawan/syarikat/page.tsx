@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { Building2, CheckCircle, Save, ArrowLeft, Upload, FileCheck, AlertCircle } from 'lucide-react'
@@ -42,7 +42,9 @@ export default async function SyarikatPage() {
     const phone          = formData.get('phone') as string
     const isBumiputera   = formData.get('isBumiputera') === 'true'
 
-    await supabase
+    // Use admin client to bypass RLS for system-level upsert
+    const adminSupabase = createAdminClient()
+    const { error } = await adminSupabase
       .from('company_profiles')
       .upsert({
         owner_user_id: user.id,
@@ -58,6 +60,10 @@ export default async function SyarikatPage() {
         owner_age: ownerAge,
         phone,
       }, { onConflict: 'owner_user_id' })
+
+    if (error) {
+      console.error('Gagal simpan profil syarikat:', error)
+    }
 
     revalidatePath('/usahawan/syarikat')
     revalidatePath('/usahawan')

@@ -24,7 +24,7 @@ export async function generateBusinessReport(
   context: BusinessContext
 ): Promise<AiReportInput> {
   const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: {
@@ -112,10 +112,13 @@ Sila jana:
       }
 
       const result = await model.generateContent(prompt)
-      const text = result.response.text()
+      let text = result.response.text()
       if (!text) {
         throw new Error('Respons kosong daripada Gemini API.')
       }
+
+      // Strip markdown code fences if Gemini wraps JSON in ```json ... ```
+      text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '')
 
       const parsedJson = JSON.parse(text)
       const validatedData = AiReportSchema.parse(parsedJson)

@@ -145,13 +145,29 @@ export default function ProjectDashboardClient({
         body: JSON.stringify({ projectId: project.id }),
       })
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Gagal menjana laporan.')
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        let msg: string
+        try {
+          const json = JSON.parse(text)
+          msg = json.error || 'Gagal menjana laporan.'
+        } catch {
+          msg = text || `Server ralat (${res.status})`
+        }
+        throw new Error(msg)
+      }
 
+      const data = await res.json()
       setReport(data.report)
-      setCountdown(30) // Limit to once every 30 seconds
+      setCountdown(30)
     } catch (err: any) {
-      setErrorMsg(err.message || 'Ralat berlaku semasa menjana laporan.')
+      const msg = err.message || ''
+      // Bersihkan error JSON parsing — tunjuk mesej mesra
+      if (msg.includes('JSON') || msg.includes('Unexpected') || msg.includes('body') || msg.includes('text')) {
+        setErrorMsg('Ralat server: Laporan tidak dapat dijana. Sila cuba lagi dalam beberapa saat.')
+      } else {
+        setErrorMsg(msg)
+      }
     } finally {
       clearInterval(stepInterval)
       setGenerating(false)

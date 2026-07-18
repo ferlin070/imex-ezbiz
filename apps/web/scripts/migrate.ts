@@ -3,12 +3,17 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 async function run() {
-  const connectionString = 'postgresql://postgres.ojxejzrzttoszxkzqvsl:S3cr3t%40imexezbiz@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres'
-  
+  const connectionString = process.env.SUPABASE_MIGRATE_URL
+  if (!connectionString) {
+    console.error('❌ SUPABASE_MIGRATE_URL environment variable is not set.')
+    console.error('   Usage: SUPABASE_MIGRATE_URL="postgresql://..." npx tsx scripts/migrate.ts')
+    process.exit(1)
+  }
+
   console.log('Connecting to Supabase Database...')
   const client = new Client({
     connectionString,
-    ssl: { rejectUnauthorized: false } // Required for cloud databases like Supabase
+    ssl: { rejectUnauthorized: false },
   })
 
   await client.connect()
@@ -26,7 +31,6 @@ async function run() {
       const filePath = path.join(migrationDir, file)
       const sqlContent = fs.readFileSync(filePath, 'utf8')
 
-      // Execute SQL content
       await client.query(sqlContent)
       console.log(`✅ Success: ${file} completed.`)
     }

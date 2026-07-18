@@ -1,64 +1,49 @@
 import { loadEnvConfig } from '@next/env'
 import { z } from 'zod'
 
-// Validate environment variables. On CI/Vercel: still validate — fail the build early 
-// if vars are missing or are placeholder values. Prevents silent production fallback to mock data.
-const isCI = !!(process.env.CI || process.env.VERCEL)
-if (isCI) {
-  console.log('ℹ️  CI/Vercel build detected — validating required environment variables...')
-  // On CI, env vars must be present and not be placeholder values.
-  // We check them directly from process.env (not .env files, which don't exist in CI).
-  const required = [
-    'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    'SUPABASE_SERVICE_ROLE_KEY',
-    'GEMINI_API_KEY',
-  ]
-  const placeholderPatterns = ['dummy', 'placeholder', 'your-', 'changeme', 'xxxxx']
-  const errors: string[] = []
-  for (const key of required) {
-    const val = process.env[key]
-    if (!val) {
-      errors.push(`${key} tidak ditetapkan (missing).`)
-    } else if (placeholderPatterns.some(p => val.toLowerCase().includes(p))) {
-      errors.push(`${key} mengandungi nilai placeholder ("${val.substring(0, 20)}...") — guna nilai sebenar.`)
-    }
-  }
-  if (errors.length > 0) {
-    console.error('❌ Environment validation GAGAL di Vercel/CI:')
-    errors.forEach(e => console.error(`   - ${e}`))
-    console.error('   Pastikan semua environment variables ditetapkan dengan betul di Vercel Dashboard → Settings → Environment Variables.')
-    process.exit(1)
-  }
-  console.log('✅ Environment variables Vercel/CI disahkan berjaya.')
-  process.exit(0)
-}
-
-
-// Load environment variables from .env.local/env files
-loadEnvConfig(process.cwd())
-
 const envSchema = z.object({
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url('NEXT_PUBLIC_SUPABASE_URL must be a valid URL.'),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(10, 'NEXT_PUBLIC_SUPABASE_ANON_KEY must be a valid string.'),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(10, 'SUPABASE_SERVICE_ROLE_KEY must be a valid string.'),
-  GEMINI_API_KEY: z.string().min(5, 'GEMINI_API_KEY must be a valid string.'),
-  GEMINI_MODEL: z.string().optional().default('gemini-1.5-flash')
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url('NEXT_PUBLIC_SUPABASE_URL mesti URL yang sah.'),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(10, 'NEXT_PUBLIC_SUPABASE_ANON_KEY mesti sekurang-kurangnya 10 aksara.'),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(10, 'SUPABASE_SERVICE_ROLE_KEY mesti sekurang-kurangnya 10 aksara.'),
+  GEMINI_API_KEY: z.string().min(5, 'GEMINI_API_KEY mesti sekurang-kurangnya 5 aksara.'),
+  GEMINI_MODEL: z.string().optional().default('gemini-2.0-flash')
 })
 
-try {
+// Also check for known placeholder values
+const placeholderPatterns = ['dummy', 'placeholder', 'your-', 'changeme', 'xxxxx']
+
+function isPlaceholder(val: string): boolean {
+  return placeholderPatterns.some(p => val.toLowerCase().includes(p))
+}
+
+function validate(env: Record<string, unknown>) {
   console.log('🔍 Validating environment variables...')
-  envSchema.parse(process.env)
-  console.log('✅ Environment variables validated successfully.')
-} catch (error) {
-  if (error instanceof z.ZodError) {
+  const parsed = envSchema.safeParse(env)
+  if (!parsed.success) {
     console.error('❌ Environment validation failed:')
-    error.issues.forEach((err) => {
+    parsed.error.issues.forEach((err) => {
       console.error(`   - ${err.path.join('.')}: ${err.message}`)
     })
     process.exit(1)
-  } else {
-    console.error('❌ Environment validation failed with unknown error:', error)
-    process.exit(1)
   }
+  // Check placeholders on required keys
+  const requiredKeys = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'GEMINI_API_KEY']
+  for (const key of requiredKeys) {
+    const val = env[key]
+    if (typeof val === 'string' && isPlaceholder(val)) {
+      console.error(`❌ ${key} mengandungi nilai placeholder ("${val.substring(0, 30)}...") — guna nilai sebenar.`)
+      process.exit(1)
+    }
+  }
+  console.log('✅ Environment variables validated successfully.')
+}
+
+const isCI = !!(process.env.CI || process.env.VERCEL)
+if (isCI) {
+  // CI/Vercel: no .env files, check process.env directly
+  validate(process.env)
+} else {
+  // Local dev: load .env.local first, then validate
+  loadEnvConfig(process.cwd())
+  validate(process.env)
 }

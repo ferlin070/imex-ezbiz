@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; connect-src 'self' https://ojxejzrzttoszxkzqvsl.supabase.co wss://ojxejzrzttoszxkzqvsl.supabase.co https://generativelanguage.googleapis.com;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; object-src 'none'; frame-ancestors 'none'; upgrade-insecure-requests; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com;",
           },
           {
             key: 'X-Frame-Options',

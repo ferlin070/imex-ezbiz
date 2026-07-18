@@ -4,7 +4,8 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { calculateLoan } from '@/lib/loanCalculator'
 import { z } from 'zod'
-import { evaluateEligibility } from '@services/eligibility-engine'
+import { evaluateEligibility, type EligibilityRules } from '@services/eligibility-engine'
+import { getEligibilityRules } from '@/lib/config'
 import { runGuardrail } from '@services/guardrail'
 
 // A1 FIX: Replaced fs.writeFileSync (fails silently on Vercel serverless —
@@ -41,6 +42,7 @@ const loanApplicationSchema = z.object({
 export async function POST(request: Request) {
   let createdApplicationId: string | null = null
   let supabaseClient: Awaited<ReturnType<typeof createClient>> | null = null
+  let adminSupabaseClient: ReturnType<typeof createAdminClient> | null = null
 
   try {
     // 1. Auth check
@@ -48,6 +50,7 @@ export async function POST(request: Request) {
     if (auth.error) return auth.error
     const { user, supabase } = auth
     supabaseClient = supabase
+    adminSupabaseClient = createAdminClient()
 
     // 2. Parse and validate payload
     const body = await request.json()
@@ -92,17 +95,18 @@ export async function POST(request: Request) {
     const isBumiputera = bizProfile?.is_bumiputera ?? true
     const ssmNumber = bizProfile?.ssm_number || 'SSM-NOT-FOUND'
 
+    const eligibilityRules = await getEligibilityRules()
     const eligibility = await evaluateEligibility({
       ssmNumber,
       ownerAge,
       isBumiputera,
       documents: documents || []
-    })
+    }, eligibilityRules)
 
     // 6. A4 OPSYEN B: Guardrail check on plain text eligibility summary only (fast)
     //    Full AI report is generated ASYNC in a separate background route.
     //    This prevents Vercel Hobby 10s timeout and gives users immediate feedback.
-    const guardrailResult = runGuardrail(
+    const guardrailResult = await runGuardrail(
       `Kelayakan: ${eligibility.status}. SSM: ${ssmNumber}. Bumiputera: ${isBumiputera}.`
     )
 
@@ -154,7 +158,7 @@ export async function POST(request: Request) {
     // 9. Generate and save repayment schedule
     const calculation = calculateLoan(requestedAmountMyr, Number(product.profit_rate_percent), requestedTenureMonths)
 
-    const { error: scheduleError } = await supabase
+    const { error: scheduleError } = await adminSupabaseClient
       .from('loan_repayment_schedules')
       .insert({
         loan_application_id: createdApplicationId,
@@ -166,7 +170,7 @@ export async function POST(request: Request) {
 
     if (scheduleError) {
       logger.error('Insert schedule error, rolling back application:', scheduleError)
-      await supabase.from('loan_applications').delete().eq('id', createdApplicationId)
+      await adminSupabaseClient.from('loan_applications').delete().eq('id', createdApplicationId)
       return NextResponse.json({ error: 'Gagal menjana jadual bayaran balik.' }, { status: 500 })
     }
 
@@ -204,8 +208,8 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     logger.error('Loan apply API exception:', error)
-    if (createdApplicationId && supabaseClient) {
-      await supabaseClient.from('loan_applications').delete().eq('id', createdApplicationId)
+    if (createdApplicationId && adminSupabaseClient) {
+      await adminSupabaseClient.from('loan_applications').delete().eq('id', createdApplicationId)
     }
     return NextResponse.json({ error: error.message || 'Ralat server semasa menghantar permohonan.' }, { status: 500 })
   }

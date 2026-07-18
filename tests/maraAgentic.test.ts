@@ -64,22 +64,22 @@ test('Eligibility Engine Rules Validation Tests', async (t) => {
 })
 
 test('Post-Processing Domain Guardrail Tests', async (t) => {
-  await t.test('Blocks competitor financing mentions (TEKUN) and replaces output with standard MARA response', () => {
-    const result = runGuardrail('Sila mohon dana alternatif daripada TEKUN Nasional.')
+  await t.test('Blocks competitor financing mentions (TEKUN) and replaces output with standard MARA response', async () => {
+    const result = await runGuardrail('Sila mohon dana alternatif daripada TEKUN Nasional.')
     assert.strictEqual(result.passed, false)
     assert.ok(result.cleanText.includes('ekosistem MARA sahaja'))
     assert.ok(result.cleanText.includes('Pegawai MARA'))
   })
 
-  await t.test('Blocks SME Bank financing suggestions', () => {
-    const result = runGuardrail('Anda boleh menghubungi SME Bank untuk khidmat pembiayaan tambahan.')
+  await t.test('Blocks SME Bank financing suggestions', async () => {
+    const result = await runGuardrail('Anda boleh menghubungi SME Bank untuk khidmat pembiayaan tambahan.')
     assert.strictEqual(result.passed, false)
     assert.ok(result.cleanText.includes('ekosistem MARA sahaja'))
   })
 
-  await t.test('Passes valid domain-locked MARA content', () => {
+  await t.test('Passes valid domain-locked MARA content', async () => {
     const validAdvice = 'Anda disarankan memohon Skim Pembiayaan SPIKE di bawah MARA.'
-    const result = runGuardrail(validAdvice)
+    const result = await runGuardrail(validAdvice)
     assert.strictEqual(result.passed, true)
     assert.strictEqual(result.cleanText, validAdvice)
   })
