@@ -1,5 +1,22 @@
-// Mock Database for IMEX AI-Biz MVP fallback mode
-// This allows the app to be fully functional locally even when Supabase URL is invalid/dummy.
+// =========================================================================
+// DEPRECATED: Mock Database for legacy IMEX FYP Judging Platform
+// =========================================================================
+// NOTA PENTING: Fail ini adalah warisan dari sistem penghakiman FYP lama (IMEX).
+// Ia BUKAN sebahagian dari sistem MARA AI-Advisor yang sedang beroperasi.
+//
+// Data model di sini (MockEvent, MockProject judging, MockCriterion, etc.)
+// adalah untuk sistem IMEX lama dan TIDAK digunakan dalam mana-mana feature
+// production yang aktif.
+//
+// TODO (Cleanup Sprint): Setelah integrasi Supabase disahkan stabil sepenuhnya,
+// fail ini boleh dipadam. Semak tiada `import from '@/lib/mockDb'` yang masih aktif
+// sebelum memadam.
+// =========================================================================
+//
+// Penggunaan sah semasa: mockClient.ts menggunakan data dummy ini untuk
+// development/testing tempatan sahaja (apabila SUPABASE_URL = dummy).
+// =========================================================================
+
 
 export interface MockEvent {
   id: string
