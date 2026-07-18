@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Landmark, User, ShieldAlert, KeyRound, Mail, Sparkles } from 'lucide-react'
+import { Landmark, User, ShieldAlert, KeyRound, Mail, Sparkles, Eye, EyeOff, UserPlus, HelpCircle, CheckCircle } from 'lucide-react'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -38,6 +39,9 @@ export default function LoginPage() {
   const [role, setRole] = useState<'entrepreneur' | 'mara_officer'>('entrepreneur')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
+  const [forgotLoading, setForgotLoading] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -76,6 +80,26 @@ export default function LoginPage() {
     } catch (err: any) {
       setErrorMsg(err.message || 'Ralat log masuk berlaku.')
       setLoading(false)
+    }
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setErrorMsg('Sila masukkan alamat e-mel anda dahulu untuk menetapkan semula kata laluan.')
+      return
+    }
+    setForgotLoading(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (error) throw new Error(error.message)
+      setForgotSent(true)
+      setErrorMsg('')
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Gagal menghantar e-mel penetapan semula kata laluan.')
+    } finally {
+      setForgotLoading(false)
     }
   }
 
@@ -152,18 +176,44 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs text-gray-400 font-bold block">Kata Laluan</label>
+            <label htmlFor="login-kata-laluan" className="text-xs text-gray-400 font-bold block">Kata Laluan</label>
             <div className="relative">
               <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
-                type="password"
+                id="login-kata-laluan"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-200 outline-none focus:border-teal-400"
+                className="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-200 outline-none focus:border-teal-400"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                aria-label="Tunjuk/sembunyikan kata laluan"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
+            <div className="flex justify-end mt-1">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={forgotLoading}
+                className="text-[10px] text-gray-500 hover:text-teal-400 transition-colors flex items-center gap-1"
+              >
+                <HelpCircle className="w-3 h-3" />
+                {forgotLoading ? 'Menghantar...' : 'Lupa Kata Laluan?'}
+              </button>
+            </div>
+            {forgotSent && (
+              <div className="flex items-center gap-1.5 text-[10px] text-teal-400 mt-1">
+                <CheckCircle className="w-3 h-3" />
+                <span>E-mel penetapan semula kata laluan telah dihantar. Sila semak peti masuk anda.</span>
+              </div>
+            )}
           </div>
 
           <button
@@ -174,6 +224,18 @@ export default function LoginPage() {
             {loading ? 'Sila tunggu...' : 'Log Masuk'}
           </button>
         </form>
+
+
+        {/* Daftar link */}
+        <div className="text-center border-t border-slate-800 pt-4">
+          <Link
+            href="/daftar"
+            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-teal-400 transition-colors"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Belum ada akaun? <span className="text-teal-400 font-bold">Daftar sekarang</span></span>
+          </Link>
+        </div>
       </div>
     </div>
   )

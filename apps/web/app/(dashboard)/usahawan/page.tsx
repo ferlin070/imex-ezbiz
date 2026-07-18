@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { Plus, Landmark, AlertCircle, FileText, ArrowRight, ShieldAlert, CheckCircle, HelpCircle, Edit2, FileCheck } from 'lucide-react'
+
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +17,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
 
   // 1. Resolve user session
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  if (!user) redirect('/login')
 
   // 2. Fetch all projects (Business profiles)
   const { data: projects } = await supabase
