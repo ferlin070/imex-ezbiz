@@ -18,7 +18,7 @@ export default function FeasibilityGauge({ score, tier, scoreSource }: Feasibili
       case 'Sangat Berpotensi':
         return { hex: '#10b981', text: 'text-green-400', border: 'border-green-500/20' }
       case 'Layak Komersial':
-        return { hex: '#06b6d4', text: 'text-cyan-400', border: 'border-cyan-500/20' }
+        return { hex: '#f0b800', text: 'text-mara-gold', border: 'border-mara-gold/20' }
       case 'Berpotensi Sederhana':
         return { hex: '#f59e0b', text: 'text-yellow-500', border: 'border-yellow-500/20' }
       case 'Perlu Bimbingan':

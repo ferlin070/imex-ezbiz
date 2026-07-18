@@ -53,7 +53,7 @@ export default async function TetapanPage({
       {/* Header */}
       <div className="border-b border-slate-800 pb-5">
         <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent flex items-center gap-2">
-          <Settings className="w-8 h-8 text-teal-400" />
+          <Settings className="w-8 h-8 text-mara-red" />
           Profil &amp; Tetapan
         </h1>
         <p className="text-slate-400 text-sm mt-1">
@@ -71,12 +71,12 @@ export default async function TetapanPage({
       {/* Profile Form */}
       <div className="p-6 bg-slate-900/40 border border-slate-850 rounded-2xl space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center text-teal-400">
+          <div className="w-12 h-12 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center text-mara-red">
             <User className="w-6 h-6" />
           </div>
           <div>
             <h3 className="font-extrabold text-sm text-slate-200">{profile.name || 'Pengguna MARA'}</h3>
-            <span className="text-[10px] bg-teal-400/10 border border-teal-500/20 text-teal-400 px-2 py-0.5 rounded font-black uppercase tracking-wider">
+            <span className="text-[10px] bg-mara-red/10 border border-mara-red/20 text-mara-red px-2 py-0.5 rounded font-black uppercase tracking-wider">
               {profile.role === 'entrepreneur' ? 'Usahawan' : profile.role === 'admin' ? 'Pentadbir Sistem' : 'Pegawai MARA'}
             </span>
           </div>
@@ -100,7 +100,7 @@ export default async function TetapanPage({
               name="fullName"
               required
               defaultValue={profile.name || ''}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-mara-red"
               placeholder="cth: Ahmad Bin Kassim"
             />
           </div>
@@ -108,7 +108,7 @@ export default async function TetapanPage({
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-3 bg-teal-400 hover:bg-teal-300 text-slate-950 font-black rounded-lg transition active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
+              className="w-full py-3 bg-mara-red hover:bg-mara-red/80 text-white font-black rounded-lg transition active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer"
             >
               <Save className="w-4 h-4" />
               Simpan Perubahan
@@ -119,7 +119,7 @@ export default async function TetapanPage({
 
       {/* Security note */}
       <div className="p-4 bg-slate-950 border border-slate-850 rounded-xl flex items-center gap-3">
-        <Sparkles className="w-5 h-5 text-teal-400 shrink-0" />
+        <Sparkles className="w-5 h-5 text-mara-red shrink-0" />
         <p className="text-[10px] text-slate-500 leading-relaxed">
           Sistem disulitkan menggunakan Supabase Auth. Semua pertukaran profil direkod secara automatik dalam audit log aktiviti sistem MARA.
         </p>

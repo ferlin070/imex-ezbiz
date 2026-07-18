@@ -16,20 +16,20 @@ export default function BlueprintCard({ blueprint }: BlueprintCardProps) {
   const sections = [
     {
       title: 'Blueprint Teknikal',
-      icon: <Cpu className="w-4 h-4 text-cyan-400" />,
+      icon: <Cpu className="w-4 h-4 text-mara-gold" />,
       items: blueprint.technical || [],
-      bgColor: 'bg-cyan-500/5',
-      borderColor: 'border-cyan-500/10',
-      tagColor: 'text-cyan-400 bg-cyan-950/50 border-cyan-800/30',
+      bgColor: 'bg-mara-gold/5',
+      borderColor: 'border-mara-gold/10',
+      tagColor: 'text-mara-gold bg-mara-gold/5 border-mara-gold/20',
       description: 'Langkah pembangunan kejuruteraan, integrasi sistem, dan kawalan mutu.'
     },
     {
       title: 'Blueprint Pemasaran',
-      icon: <BarChart4 className="w-4 h-4 text-teal-neon" />,
+      icon: <BarChart4 className="w-4 h-4 text-mara-red" />,
       items: blueprint.marketing || [],
-      bgColor: 'bg-teal-500/5',
-      borderColor: 'border-teal-500/10',
-      tagColor: 'text-teal-neon bg-teal-950/50 border-teal-800/30',
+      bgColor: 'bg-mara-red/5',
+      borderColor: 'border-mara-red/10',
+      tagColor: 'text-mara-red bg-mara-red/5 border-mara-red/20',
       description: 'Strategi pemasaran sasaran, pelancaran produk, dan pemerolehan pelanggan.'
     },
     {

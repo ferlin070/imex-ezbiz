@@ -1,50 +1,51 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Landmark, ShieldAlert, CheckCircle, AlertTriangle, XCircle, LogOut } from 'lucide-react'
+import { Landmark, CheckCircle, XCircle, AlertTriangle, LogOut, ShieldAlert } from 'lucide-react'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default async function PegawaiDashboard() {
+export default async function PegawaiPage() {
   const supabase = await createClient()
 
   // 1. Auth check
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
     redirect('/login')
   }
 
-  // 2. Role check
+  // 2. Role check — only staff (admin, mara_officer) can access
   const { data: profile } = await supabase
     .from('profiles')
-    .select('name, role')
+    .select('role, name')
     .eq('id', user.id)
     .single()
 
-  if (!profile || (profile.role !== 'mara_officer' && profile.role !== 'admin')) {
+  if (!profile || (profile.role !== 'admin' && profile.role !== 'mara_officer')) {
     redirect('/login')
   }
 
-  // 3. Fetch all loan applications
+  // 3. Fetch all loan applications with project and profile details
   const { data: applications } = await supabase
     .from('loan_applications')
     .select(`
       id,
       requested_amount_myr,
       requested_tenure_months,
-      status,
-      created_at,
       eligibility_status,
       eligibility_output,
       ai_action_plan,
       was_blocked_by_guardrail,
-      loan_product:loan_product_id ( name ),
-      project:project_id (
+      status,
+      created_at,
+      loan_product:loan_products(name),
+      project:projects(
         title,
-        owner:owner_user_id ( name, email ),
-        business_profile:business_profiles (
+        owner:profiles(name, email),
+        business_profile:business_profiles(
           business_name,
           ssm_number,
+          owner_full_name,
           owner_age,
           is_bumiputera,
           operating_since
@@ -56,13 +57,13 @@ export default async function PegawaiDashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 relative overflow-hidden">
       {/* Glow background */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-cyan-500/5 blur-[120px] pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-mara-gold/5 blur-[120px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto space-y-8 z-10 relative">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-5">
           <div className="flex items-center gap-3">
-            <Landmark className="w-8 h-8 text-cyan-400" />
+            <Landmark className="w-8 h-8 text-mara-gold" />
             <div>
               <h1 className="text-2xl font-bold text-white">Konsol Pegawai MARA</h1>
               <p className="text-xs text-slate-400">Penyemakan permohonan pembiayaan usahawan & laporan kelayakan AI</p>
@@ -71,7 +72,7 @@ export default async function PegawaiDashboard() {
           <div className="flex items-center gap-4">
             <div className="text-right">
               <span className="text-xs text-slate-400 block font-medium">Pegawai: {profile.name}</span>
-              <span className="text-[10px] bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">MARA Officer</span>
+              <span className="text-[10px] bg-mara-red/10 border border-mara-red/20 text-mara-red px-2 py-0.5 rounded font-bold uppercase tracking-wider">MARA Officer</span>
             </div>
             <Link 
               href="/login" 
@@ -90,7 +91,7 @@ export default async function PegawaiDashboard() {
           </div>
           <div className="p-5 bg-slate-900/40 border border-slate-850 rounded-2xl">
             <span className="text-xs text-slate-500 font-bold uppercase block">Status LULUS</span>
-            <span className="text-2xl font-extrabold text-teal-400">
+            <span className="text-2xl font-extrabold text-emerald-400">
               {applications?.filter((a: any) => a.eligibility_status === 'LULUS').length || 0}
             </span>
           </div>
@@ -159,8 +160,8 @@ export default async function PegawaiDashboard() {
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800">
                           {app.eligibility_status === 'LULUS' && (
                             <>
-                              <CheckCircle className="w-4 h-4 text-teal-400" />
-                              <span className="text-xs font-black text-teal-400">LULUS RULES</span>
+                              <CheckCircle className="w-4 h-4 text-emerald-400" />
+                              <span className="text-xs font-black text-emerald-400">LULUS RULES</span>
                             </>
                           )}
                           {app.eligibility_status === 'TIDAK_LULUS' && (
@@ -187,31 +188,31 @@ export default async function PegawaiDashboard() {
                         <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900 space-y-2.5">
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Had Umur Pemilik (18 - 60):</span>
-                            <span className={checks.agePassed ? "text-teal-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={checks.agePassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                               {bizProfile.owner_age || '-'} Tahun ({checks.agePassed ? "Lepas" : "Gagal"})
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Status Bumiputera:</span>
-                            <span className={checks.bumiputeraPassed ? "text-teal-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={checks.bumiputeraPassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                               {bizProfile.is_bumiputera ? 'Ya' : 'Bukan'} ({checks.bumiputeraPassed ? "Lepas" : "Gagal"})
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Pendaftaran SSM (Aktif):</span>
-                            <span className={checks.ssmActivePassed ? "text-teal-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={checks.ssmActivePassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                               {checks.ssmActivePassed ? "Aktif" : "Tidak Aktif/Gagal"}
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Tempoh Matang Bisnes (Haul):</span>
-                            <span className={checks.haulPassed ? "text-teal-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={checks.haulPassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                               {checks.haulDurationMonths !== undefined ? `${checks.haulDurationMonths} Bulan` : 'Gagal'} ({checks.haulPassed ? "Lepas" : "Gagal"})
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Dokumen Wajib Dimuat Naik:</span>
-                            <span className={checks.documentsPassed ? "text-teal-400 font-bold" : "text-amber-400 font-bold"}>
+                            <span className={checks.documentsPassed ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
                               {checks.documentsPassed ? "Lengkap" : "Tidak Lengkap"}
                             </span>
                           </div>

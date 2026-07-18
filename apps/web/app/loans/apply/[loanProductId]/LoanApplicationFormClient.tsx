@@ -88,14 +88,13 @@ export default function LoanApplicationFormClient({
     try {
       await fetch(`/api/loans/ai-plan/${appId}`, { method: 'POST' })
     } catch {
-      // Best effort — if POST fails, polling will still catch it if it already ran
+      // Best effort
     }
 
     const poll = async () => {
       pollCountRef.current += 1
 
       if (pollCountRef.current > MAX_POLL_ATTEMPTS) {
-        // Give up polling — direct user to dashboard where they can check later
         setStep('ai_ready')
         setAiActionPlan('Pelan AI sedang dijana. Sila semak semula dalam beberapa minit di dashboard anda.')
         return
@@ -109,7 +108,6 @@ export default function LoanApplicationFormClient({
           setAiActionPlan(data.actionPlan)
           setStep('ai_ready')
         } else {
-          // Still pending — poll again
           pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS)
         }
       } catch {
@@ -117,7 +115,6 @@ export default function LoanApplicationFormClient({
       }
     }
 
-    // Start polling after a brief initial delay to give the POST time to start
     pollTimerRef.current = setTimeout(poll, 2000)
   }, [])
 
@@ -154,12 +151,10 @@ export default function LoanApplicationFormClient({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal menghantar permohonan.')
 
-      // A4 Opsyen B: Eligibility result is immediate
       setEligibilityStatus(data.eligibilityStatus)
       setApplicationId(data.applicationId)
       setStep('eligibility')
 
-      // Automatically start AI plan generation after a short delay
       setTimeout(() => {
         triggerAndPollAIPlan(data.applicationId)
       }, 1500)
@@ -241,10 +236,10 @@ export default function LoanApplicationFormClient({
           {/* AI Plan Section */}
           <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+              <Sparkles className="w-4 h-4 text-mara-gold" />
               <h3 className="text-sm font-bold text-white">Pelan Tindakan AI</h3>
               {(step === 'ai_generating' || step === 'eligibility') && (
-                <span className="ml-auto flex items-center gap-1.5 text-[10px] text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                <span className="ml-auto flex items-center gap-1.5 text-[10px] text-mara-gold bg-mara-gold/10 border border-mara-gold/20 px-2 py-0.5 rounded-full">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Sedang dijana... ({Math.min(pollCountRef.current * 3, 59)}s)
                 </span>
@@ -285,7 +280,7 @@ export default function LoanApplicationFormClient({
             {step === 'ai_ready' && (
               <button
                 onClick={() => router.push('/loans')}
-                className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-sm transition"
+                className="flex-1 py-3 bg-gradient-to-r from-mara-red to-mara-gold text-white font-bold rounded-xl text-sm transition"
               >
                 Lihat Skim Lain
               </button>
@@ -320,7 +315,7 @@ export default function LoanApplicationFormClient({
   // ─── STEP: Form ───────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col items-center justify-center relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-teal-neon/5 blur-[120px] pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-mara-red/5 blur-[120px] pointer-events-none" />
 
       <div className="max-w-2xl w-full z-10 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-8 backdrop-blur-sm shadow-xl space-y-6">
 
@@ -334,7 +329,7 @@ export default function LoanApplicationFormClient({
           </button>
           <div>
             <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <Landmark className="w-5 h-5 text-teal-neon" />
+              <Landmark className="w-5 h-5 text-mara-red" />
               Mohon Skim {product.name}
             </h1>
             <p className="text-xs text-slate-400">Pautkan permohonan dengan profil perniagaan: {project.title}</p>
@@ -361,7 +356,7 @@ export default function LoanApplicationFormClient({
                   max={product.max_amount_myr}
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:border-slate-500 outline-none text-white text-sm"
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:border-mara-red outline-none text-white text-sm"
                   required
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">Had: RM{Number(product.min_amount_myr).toLocaleString()} - RM{Number(product.max_amount_myr).toLocaleString()}</span>
@@ -375,7 +370,7 @@ export default function LoanApplicationFormClient({
                   max={product.max_tenure_months}
                   value={tenure}
                   onChange={(e) => setTenure(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:border-slate-500 outline-none text-white text-sm"
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:border-mara-red outline-none text-white text-sm"
                   required
                 />
                 <span className="text-[10px] text-slate-500 mt-1 block">Had: {product.min_tenure_months} - {product.max_tenure_months} bulan</span>
@@ -388,7 +383,7 @@ export default function LoanApplicationFormClient({
                   onChange={(e) => setPurpose(e.target.value)}
                   placeholder="Terangkan secara terperinci keperluan modal (cth: beli mesin, ubah suai premis)"
                   rows={4}
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:border-slate-500 outline-none text-white text-sm resize-none"
+                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl focus:border-mara-red outline-none text-white text-sm resize-none"
                   required
                 />
               </div>
@@ -402,7 +397,7 @@ export default function LoanApplicationFormClient({
                   <div className="space-y-4">
                     <div className="flex justify-between items-baseline border-b border-slate-800 pb-3">
                       <span className="text-xs text-slate-400">Ansuran Bulanan:</span>
-                      <span className="text-xl font-black text-teal-neon">RM {calcResult.monthlyInstallment.toLocaleString()}</span>
+                      <span className="text-xl font-black text-mara-red">RM {calcResult.monthlyInstallment.toLocaleString()}</span>
                     </div>
                     <div className="space-y-2 text-xs text-slate-400">
                       <div className="flex justify-between">
@@ -429,7 +424,7 @@ export default function LoanApplicationFormClient({
 
           <button
             type="submit"
-            className="w-full py-3.5 bg-gradient-to-r from-teal-neon to-cyan-neon text-navy-950 font-black rounded-xl text-sm uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(0,242,254,0.2)] hover:shadow-[0_0_20px_rgba(0,242,254,0.4)] cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full py-3.5 bg-gradient-to-r from-mara-red to-mara-gold text-white font-black rounded-xl text-sm uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(194,14,26,0.2)] hover:shadow-[0_0_20px_rgba(194,14,26,0.4)] cursor-pointer flex items-center justify-center gap-1.5"
           >
             <Save className="w-4 h-4" />
             <span>Hantar Permohonan Pembiayaan</span>

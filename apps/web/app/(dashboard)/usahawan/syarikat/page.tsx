@@ -75,7 +75,7 @@ export default async function SyarikatPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-teal-400" />
+            <Building2 className="w-6 h-6 text-mara-red" />
             Profil Syarikat
           </h1>
           <p className="text-slate-400 text-sm mt-0.5">
@@ -107,7 +107,7 @@ export default async function SyarikatPage() {
           {/* Maklumat Syarikat */}
           <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-5">
             <h2 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-teal-400" />
+              <Building2 className="w-4 h-4 text-mara-red" />
               Maklumat Syarikat / Perniagaan
             </h2>
 
@@ -127,7 +127,7 @@ export default async function SyarikatPage() {
                 <input
                   type="text" name="ssmNumber"
                   defaultValue={companyProfile?.ssm_number || ''}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-teal-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-mara-red transition"
                   placeholder="202601012345"
                 />
               </div>
@@ -136,7 +136,7 @@ export default async function SyarikatPage() {
                 <select
                   name="entityType"
                   defaultValue={companyProfile?.entity_type || 'milikan_tunggal'}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-teal-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-mara-red transition"
                 >
                   <option value="milikan_tunggal">Milikan Tunggal</option>
                   <option value="perkongsian">Perkongsian</option>
@@ -171,7 +171,7 @@ export default async function SyarikatPage() {
                 <select
                   name="state"
                   defaultValue={companyProfile?.state || ''}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-teal-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-mara-red transition"
                 >
                   <option value="">Pilih Negeri</option>
                   {['Johor','Kedah','Kelantan','Melaka','Negeri Sembilan','Pahang','Perak','Perlis',
@@ -186,7 +186,7 @@ export default async function SyarikatPage() {
                 <input
                   type="text" name="district"
                   defaultValue={companyProfile?.district || ''}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-teal-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-mara-red transition"
                   placeholder="e.g. Petaling Jaya"
                 />
               </div>
@@ -213,7 +213,7 @@ export default async function SyarikatPage() {
                 <input
                   type="text" name="ownerIcNumber" required
                   defaultValue={companyProfile?.owner_ic_number || ''}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-teal-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-mara-red transition"
                   placeholder="900101115555"
                 />
               </div>
@@ -222,7 +222,7 @@ export default async function SyarikatPage() {
                 <input
                   type="number" name="ownerAge" min={18} max={99}
                   defaultValue={companyProfile?.owner_age || 30}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-teal-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-mara-red transition"
                 />
               </div>
             </div>
@@ -233,7 +233,7 @@ export default async function SyarikatPage() {
                 <input
                   type="tel" name="phone" required
                   defaultValue={companyProfile?.phone || ''}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-teal-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-mara-red transition"
                   placeholder="0123456789"
                 />
               </div>
@@ -242,7 +242,7 @@ export default async function SyarikatPage() {
                 <select
                   name="isBumiputera"
                   defaultValue={companyProfile?.is_bumiputera?.toString() ?? 'true'}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-teal-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 outline-none focus:border-mara-red transition"
                 >
                   <option value="true">Bumiputera</option>
                   <option value="false">Non-Bumiputera</option>
@@ -253,7 +253,7 @@ export default async function SyarikatPage() {
 
           <button
             type="submit"
-            className="w-full py-3 bg-teal-500 hover:bg-teal-400 text-slate-950 font-black rounded-xl text-sm transition flex items-center justify-center gap-2"
+            className="w-full py-3 bg-mara-red hover:bg-mara-red/80 text-white font-black rounded-xl text-sm transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Save className="w-4 h-4" />
             {isNew ? 'Simpan Profil Syarikat' : 'Kemaskini Profil Syarikat'}
@@ -264,7 +264,7 @@ export default async function SyarikatPage() {
         <div className="space-y-4">
           <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-4">
             <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-              <Upload className="w-4 h-4 text-teal-400" />
+              <Upload className="w-4 h-4 text-mara-red" />
               Dokumen Wajib
             </h3>
             <p className="text-[11px] text-slate-400 leading-relaxed">
@@ -293,8 +293,8 @@ export default async function SyarikatPage() {
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-teal-500/5 border border-teal-500/20 space-y-2">
-            <p className="text-[11px] text-teal-300 font-bold">Tip: Isi sekali, guna berkali</p>
+          <div className="p-4 rounded-xl bg-mara-red/5 border border-mara-red/20 space-y-2">
+            <p className="text-[11px] text-mara-gold font-bold">Tip: Isi sekali, guna berkali</p>
             <p className="text-[10px] text-slate-400 leading-relaxed">
               Maklumat syarikat ini digunakan secara automatik setiap kali anda mendaftar produk baru — tanpa perlu isi semula.
             </p>

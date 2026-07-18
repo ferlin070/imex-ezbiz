@@ -6,8 +6,8 @@
   --color-navy-900: #0a0f24;
   --color-navy-800: #0e1635;
   --color-navy-700: #15204c;
-  --color-teal-neon: #00f2fe;
-  --color-cyan-neon: #4facfe;
+  --color-mara-red: #c20e1a;
+  --color-mara-gold: #f0b800;
   --color-slate-850: #162032;
 }
 
@@ -97,7 +97,7 @@ body {
   content: '';
   position: absolute;
   inset: -1px;
-  background: linear-gradient(90deg, var(--color-teal-neon), var(--color-cyan-neon));
+  background: linear-gradient(90deg, var(--color-mara-red), var(--color-mara-gold));
   border-radius: inherit;
   z-index: -1;
   opacity: 0.4;
@@ -118,7 +118,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #2dd4bf; /* teal-400 */
+  outline: 2px solid var(--color-mara-red);
   outline-offset: 2px;
 }
 
@@ -151,7 +151,7 @@ textarea::placeholder {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00f2fe;
+  background: var(--color-mara-gold);
 }
 
 /* ======================================================

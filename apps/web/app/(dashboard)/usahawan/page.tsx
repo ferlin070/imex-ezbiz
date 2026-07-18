@@ -4,18 +4,17 @@ import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { Plus, Landmark, AlertCircle, FileText, ArrowRight, ShieldAlert, CheckCircle, HelpCircle, Edit2, FileCheck, Building2, AlertTriangle } from 'lucide-react'
 
-
 export const dynamic = 'force-dynamic'
 
-interface PageProps {
-  searchParams: Promise<{ new?: string; editProjectId?: string }>
-}
-
-export default async function UsahawanDashboard({ searchParams }: PageProps) {
-  const { new: isNew, editProjectId } = await searchParams
+export default async function UsahawanDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ editProjectId?: string; new?: string }>
+}) {
+  const { editProjectId } = await searchParams
   const supabase = await createClient()
 
-  // 1. Resolve user session
+  // 1. Auth check
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
@@ -37,24 +36,22 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
   const hasProjects = projects && projects.length > 0
   
   // Find which project to edit/show in form
-  let activeProject = null
-  if (editProjectId) {
-    activeProject = projects?.find((p: any) => p.id === editProjectId) || null
-  } else if (!hasProjects || isNew === 'true') {
-    activeProject = null // showing empty form for new project
-  } else {
-    activeProject = projects?.[0] || null // default to first one for form values if not explicitly new/edit
+  let activeProject: any = null
+  if (editProjectId && projects) {
+    activeProject = projects.find((p: any) => p.id === editProjectId) || null
   }
-
-  // 3. Fetch loan applications for all projects owned by the user
+  
+  // Check if we have active applications
   let applications: any[] = []
   if (hasProjects) {
+    // Collect all application details across all user projects
     const projectIds = projects.map((p: any) => p.id)
     const { data } = await supabase
       .from('loan_applications')
-      .select('*, loan_products(name, profit_rate_percent)')
+      .select('*, loan_products(name)')
       .in('project_id', projectIds)
       .order('created_at', { ascending: false })
+
     applications = data || []
   }
 
@@ -113,30 +110,15 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
     revalidatePath('/usahawan')
   }
 
-  const eligibilityStatusMap: Record<string, { label: string; bg: string; text: string; icon: any }> = {
-    LULUS: {
-      label: 'LULUS KELAYAKAN ASAS',
-      bg: 'bg-emerald-500/10 border-emerald-500/20',
-      text: 'text-emerald-400',
-      icon: CheckCircle
-    },
-    TIDAK_LULUS: {
-      label: 'TIDAK MELEPASI SYARAT',
-      bg: 'bg-rose-500/10 border-rose-500/20',
-      text: 'text-rose-400',
-      icon: AlertCircle
-    },
-    PERLU_TINDAKAN: {
-      label: 'PERLU TINDAKAN',
-      bg: 'bg-amber-500/10 border-amber-500/20',
-      text: 'text-amber-400',
-      icon: HelpCircle
-    }
+  // Maps status to visual classes
+  const eligibilityStatusMap = {
+    LULUS: { label: 'LULUS KELAYAKAN', text: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', icon: CheckCircle },
+    TIDAK_LULUS: { label: 'TIDAK MELEPASI SYARAT', text: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20', icon: AlertCircle },
+    PERLU_TINDAKAN: { label: 'PERLU TINDAKAN', text: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: AlertCircle }
   }
 
-  const officerStatusMap: Record<string, { label: string; color: string }> = {
-    submitted: { label: 'Dihantar', color: 'text-slate-400' },
-    under_review: { label: 'Dalam Semakan', color: 'text-blue-400' },
+  const officerStatusMap = {
+    submitted: { label: 'Dalam Semakan', color: 'text-slate-300' },
     approved: { label: 'Diluluskan', color: 'text-emerald-400' },
     rejected: { label: 'Ditolak', color: 'text-rose-400' }
   }
@@ -158,16 +140,16 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
           <div className="flex items-center gap-3">
             <Link
               href="/usahawan?new=true"
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-black text-slate-900 bg-teal-400 hover:bg-teal-300 rounded-xl transition active:scale-95"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-black text-white bg-mara-red hover:bg-mara-red/80 rounded-xl transition active:scale-95 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               Daftar Produk Baru
             </Link>
             <Link
               href="/loans"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-black text-slate-900 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 rounded-xl transition active:scale-95"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-black text-white bg-gradient-to-r from-mara-red to-mara-gold hover:from-mara-red/80 hover:to-mara-gold/80 rounded-xl transition active:scale-95 cursor-pointer"
             >
-              <Landmark className="h-4 w-4 text-slate-900" />
+              <Landmark className="h-4 w-4 text-white" />
               Mohon Skim Pembiayaan
             </Link>
           </div>
@@ -213,11 +195,11 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
           <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Edit2 className="w-4 h-4 text-teal-400" />
+                <Edit2 className="w-4 h-4 text-mara-red" />
                 {activeProject ? 'Kemaskini Produk' : 'Daftar Produk / Inovasi Baru'}
               </h2>
               {activeProject && (
-                <span className="text-[10px] font-bold text-teal-400 bg-teal-400/10 border border-teal-500/20 px-2 py-0.5 rounded uppercase">
+                <span className="text-[10px] font-bold text-mara-red bg-mara-red/10 border border-mara-red/20 px-2 py-0.5 rounded uppercase">
                   Sedang Diedit
                 </span>
               )}
@@ -231,7 +213,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                 <input
                   type="text" name="businessName" required
                   defaultValue={activeProject?.business_profiles?.business_name || activeProject?.title || ''}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-mara-red"
                   placeholder="e.g. Sos Cili Premium Organik"
                 />
               </div>
@@ -242,7 +224,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                   name="description"
                   defaultValue={activeProject?.description || ''}
                   rows={3}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500 resize-none"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-mara-red resize-none"
                   placeholder="Penerangan ringkas produk/inovasi anda..."
                 />
               </div>
@@ -253,7 +235,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                   <select
                     name="category"
                     defaultValue={activeProject?.category || 'Makanan & Minuman'}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-mara-red"
                   >
                     {['Makanan & Minuman','Pertanian','Kraftangan','Fesyen & Tekstil',
                       'Teknologi','Perkhidmatan','Pelancongan','Pendidikan','Kesihatan','Lain-lain'].map(c => (
@@ -266,7 +248,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                   <input
                     type="number" name="fundingRequested" min={1000} max={500000}
                     defaultValue={activeProject?.business_profiles?.funding_requested_myr || 10000}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-mara-red"
                   />
                 </div>
               </div>
@@ -276,7 +258,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                 <input
                   type="text" name="targetMarket"
                   defaultValue={activeProject?.business_profiles?.target_market || ''}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-mara-red"
                   placeholder="e.g. Ibu bapa urban usia 25-45 tahun"
                 />
               </div>
@@ -286,7 +268,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                 <input
                   type="text" name="usp"
                   defaultValue={activeProject?.business_profiles?.unique_selling_point || ''}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-teal-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-slate-200 outline-none focus:border-mara-red"
                   placeholder="e.g. Bahan organik tempatan bersijil Halal"
                 />
               </div>
@@ -294,7 +276,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
               <button
                 type="submit"
                 disabled={!hasCompanyProfile}
-                className="w-full py-2.5 bg-teal-400 hover:bg-teal-300 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-bold rounded-lg transition text-xs"
+                className="w-full py-2.5 bg-mara-red hover:bg-mara-red/80 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold rounded-lg transition text-xs cursor-pointer"
               >
                 {activeProject ? 'Kemaskini Produk' : 'Daftar Produk / Inovasi'}
               </button>
@@ -325,7 +307,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                 </div>
                 <Link
                   href="/usahawan?new=true"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-900 bg-teal-400 hover:bg-teal-300 rounded-xl transition active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-mara-red hover:bg-mara-red/80 rounded-xl transition active:scale-95 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Daftar Produk Pertama Saya
@@ -336,16 +318,16 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                 {projects.map((p: any) => (
                   <div
                     key={p.id}
-                    className="group p-5 rounded-2xl bg-slate-900/30 border border-slate-800 hover:border-teal-500/30 hover:bg-slate-900/60 transition-all duration-200 flex flex-col justify-between animate-scale-in"
+                    className="group p-5 rounded-2xl bg-slate-900/30 border border-slate-800 hover:border-mara-red/30 hover:bg-slate-900/60 transition-all duration-200 flex flex-col justify-between animate-scale-in"
                   >
                     <div className="space-y-2">
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-[10px] font-bold text-teal-400 bg-teal-400/10 border border-teal-500/20 px-2 py-0.5 rounded-lg uppercase tracking-wide">
+                        <span className="text-[10px] font-bold text-mara-red bg-mara-red/10 border border-mara-red/20 px-2 py-0.5 rounded-lg uppercase tracking-wide">
                           {p.category || 'Umum'}
                         </span>
                         <Link
                           href={`/usahawan?editProjectId=${p.id}`}
-                          className="text-slate-500 hover:text-teal-400 text-xs font-bold flex items-center gap-1 transition-colors opacity-0 group-hover:opacity-100"
+                          className="text-slate-500 hover:text-mara-red text-xs font-bold flex items-center gap-1 transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           Edit
@@ -360,14 +342,14 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                         href={`/project/${p.id}`}
                         className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-300 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 hover:text-white rounded-xl transition"
                       >
-                        <FileText className="w-3.5 h-3.5 text-teal-400" />
+                        <FileText className="w-3.5 h-3.5 text-mara-red" />
                         Analisis SWOT
                       </Link>
                       <Link
                         href={`/loans?projectId=${p.id}`}
-                        className="inline-flex items-center justify-center gap-1 px-3.5 py-2 text-xs font-black text-slate-900 bg-gradient-to-r from-teal-400 to-cyan-400 hover:from-teal-300 hover:to-cyan-300 rounded-xl transition shadow-sm shadow-teal-500/20"
+                        className="inline-flex items-center justify-center gap-1 px-3.5 py-2 text-xs font-black text-white bg-gradient-to-r from-mara-red to-mara-gold hover:from-mara-red/80 hover:to-mara-gold/80 rounded-xl transition shadow-sm shadow-mara-red/20 cursor-pointer"
                       >
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <ArrowRight className="w-3.5 h-3.5 text-white" />
                         Mohon Geran
                       </Link>
                     </div>
@@ -398,7 +380,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                 </div>
                 <Link
                   href="/loans"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-900 bg-teal-400 hover:bg-teal-300 rounded-xl transition active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-mara-red hover:bg-mara-red/80 rounded-xl transition active:scale-95 cursor-pointer"
                 >
                   <Landmark className="w-3.5 h-3.5" />
                   Lihat Skim Pembiayaan
@@ -407,9 +389,11 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
             ) : (
               <div className="space-y-6">
                 {applications.map((app) => {
-                  const eligConfig = eligibilityStatusMap[app.eligibility_status || 'TIDAK_LULUS'] || eligibilityStatusMap.TIDAK_LULUS
+                  const statusKey = (app.eligibility_status || 'TIDAK_LULUS') as keyof typeof eligibilityStatusMap
+                  const eligConfig = eligibilityStatusMap[statusKey] || eligibilityStatusMap.TIDAK_LULUS
                   const EligIcon = eligConfig.icon
-                  const officerConfig = officerStatusMap[app.status || 'submitted'] || officerStatusMap.submitted
+                  const officerKey = (app.status || 'submitted') as keyof typeof officerStatusMap
+                  const officerConfig = officerStatusMap[officerKey] || officerStatusMap.submitted
                   
                   return (
                     <div
@@ -468,7 +452,7 @@ export default async function UsahawanDashboard({ searchParams }: PageProps) {
                       {app.ai_action_plan && (
                         <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-900 space-y-3">
                           <div className="flex items-center gap-2">
-                            <FileText className="h-4.5 w-4.5 text-teal-400" />
+                            <FileText className="h-4.5 w-4.5 text-mara-red" />
                             <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
                               Pelan Tindakan AI Penasihat (Action Plan):
                             </h4>
