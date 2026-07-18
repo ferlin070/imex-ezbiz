@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-export type Role = 'judge' | 'entrepreneur' | 'admin' | 'mara_officer'
+// A2 FIX: Removed 'judge' — not a valid role in current MARA system.
+// (Legacy from competition/event architecture that no longer exists)
+export type Role = 'entrepreneur' | 'admin' | 'mara_officer'
 
 export async function requireRole(allowed: Role[], customErrorMessage?: string) {
   const supabase = await createClient()

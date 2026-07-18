@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   let supabaseClient: Awaited<ReturnType<typeof createClient>> | null = null
 
   try {
-    const auth = await requireRole(['entrepreneur', 'admin', 'mara_officer', 'judge'])
+    const auth = await requireRole(['entrepreneur', 'admin', 'mara_officer'])
     if (auth.error) return auth.error
     const { user, supabase } = auth
     supabaseClient = supabase

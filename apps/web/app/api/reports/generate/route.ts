@@ -5,6 +5,35 @@ import { generateBusinessReport } from '@/lib/gemini'
 import { runGuardrail } from '@services/guardrail'
 import { z } from 'zod'
 
+// R4 FIX: Field-level sanitizer for structured JSON report objects.
+// runGuardrail() returns cleanText as a plain BM sentence (not JSON),
+// so JSON.parse(cleanText) always fails and the unsanitized rawReportData is used.
+// This function recursively scans every string field and redacts blocked terms.
+const MARA_BLOCKED_TERMS = [
+  'tekun', 'mdec', 'bsn', 'punb', 'perbadanan nasional',
+  'teraju', 'superb', 'cradle', 'magic', 'mtdc', 'khazanah'
+]
+
+function sanitizeReportObject(obj: unknown): unknown {
+  if (typeof obj === 'string') {
+    const lower = obj.toLowerCase()
+    const hasBlocked = MARA_BLOCKED_TERMS.some(term => lower.includes(term))
+    return hasBlocked ? '[KANDUNGAN DIBUANG — MARA GUARDRAIL]' : obj
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeReportObject(item))
+  }
+  if (typeof obj === 'object' && obj !== null) {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+        k,
+        sanitizeReportObject(v),
+      ])
+    )
+  }
+  return obj
+}
+
 const generateSchema = z.object({
   projectId: z.string().min(1),
 })
@@ -126,16 +155,12 @@ export async function POST(request: Request) {
       logger.warn(
         `[Guardrail] AI report untuk projek ${projectId} gagal guardrail. ` +
         `Sebab: ${guardrailResult.blockedReason || 'tidak diketahui'}. ` +
-        `Menggunakan output yang telah dibersihkan.`
+        `Menjalankan field-level sanitization.`
       )
-      // Attempt to re-parse the cleaned text back to structured data
-      try {
-        finalReportData = JSON.parse(guardrailResult.cleanText)
-      } catch {
-        // If re-parsing fails, use original but mark that guardrail flagged it
-        logger.error('[Guardrail] Gagal parse cleaned output — guna original data tetapi tandakan.')
-        guardrailPassed = false
-      }
+      // R4 FIX: Use recursive field-level sanitizer instead of JSON.parse(cleanText).
+      // cleanText is a plain BM sentence — JSON.parse would always throw here,
+      // causing the unsanitized rawReportData to be saved to the database.
+      finalReportData = sanitizeReportObject(rawReportData) as typeof rawReportData
     }
 
     // 9. Compute a simple feasibility score from eligibility output
