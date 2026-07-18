@@ -10,6 +10,16 @@ export async function createClient() {
   const isProd = process.env.NODE_ENV === 'production'
   const mockSessionVal = !isProd ? (process.env.MOCK_SESSION_FOR_TEST || null) : null
 
+  // CRITICAL: In production, never silently fall back to mock data.
+  // If env vars are missing/dummy in prod, throw a clear error immediately.
+  if (isDummy && isProd) {
+    throw new Error(
+      '[MARA AI-Advisor] SUPABASE environment variables tidak ditetapkan atau mengandungi nilai placeholder. ' +
+      'Pergi ke Vercel Dashboard → Settings → Environment Variables dan tetapkan ' +
+      'NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY dengan nilai sebenar.'
+    )
+  }
+
   if (isDummy || mockSessionVal) {
     let userId = null
     try {
@@ -25,6 +35,7 @@ export async function createClient() {
     }
     return createMockSupabaseClient(userId)
   }
+
 
   const cookieStore = await cookies()
 
@@ -56,6 +67,14 @@ export function createAdminClient() {
   const isProd = process.env.NODE_ENV === 'production'
   const hasMockSession = !isProd && !!process.env.MOCK_SESSION_FOR_TEST
   const isDummy = !url || !serviceKey || url.includes('dummy') || hasMockSession
+
+  // CRITICAL: In production, never silently fall back to mock admin client.
+  if (isDummy && isProd) {
+    throw new Error(
+      '[MARA AI-Advisor] SUPABASE_SERVICE_ROLE_KEY tidak ditetapkan atau mengandungi nilai placeholder. ' +
+      'Pergi ke Vercel Dashboard → Settings → Environment Variables dan tetapkan nilai sebenar.'
+    )
+  }
 
   if (isDummy) {
     return createMockSupabaseClient('admin-id-mock-uuid')
