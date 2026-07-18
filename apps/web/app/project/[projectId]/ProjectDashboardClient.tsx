@@ -82,6 +82,8 @@ export default function ProjectDashboardClient({
   const supabase = createClient()
 
   const [report, setReport] = useState<Report | null>(initialReport)
+  const [displayScore, setDisplayScore] = useState(feasibilityResult.score)
+  const [displayTier, setDisplayTier] = useState(feasibilityResult.tier)
   const [generating, setGenerating] = useState(false)
   const [genStep, setGenStep] = useState(0)
   const [countdown, setCountdown] = useState(0)
@@ -145,13 +147,31 @@ export default function ProjectDashboardClient({
         body: JSON.stringify({ projectId: project.id }),
       })
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Gagal menjana laporan.')
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        let msg: string
+        try {
+          const json = JSON.parse(text)
+          msg = json.error || 'Gagal menjana laporan.'
+        } catch {
+          msg = text || `Server ralat (${res.status})`
+        }
+        throw new Error(msg)
+      }
 
+      const data = await res.json()
       setReport(data.report)
-      setCountdown(30) // Limit to once every 30 seconds
+      setDisplayScore(data.report.feasibility_score)
+      setDisplayTier(data.report.feasibility_tier)
+      setCountdown(30)
     } catch (err: any) {
-      setErrorMsg(err.message || 'Ralat berlaku semasa menjana laporan.')
+      const msg = err.message || ''
+      // Bersihkan error JSON parsing — tunjuk mesej mesra
+      if (msg.includes('JSON') || msg.includes('Unexpected') || msg.includes('body') || msg.includes('text')) {
+        setErrorMsg('Ralat server: Laporan tidak dapat dijana. Sila cuba lagi dalam beberapa saat.')
+      } else {
+        setErrorMsg(msg)
+      }
     } finally {
       clearInterval(stepInterval)
       setGenerating(false)
@@ -160,7 +180,7 @@ export default function ProjectDashboardClient({
 
   // Safe helper to map feasibility status for MARA focus
   const getGrantMapping = () => {
-    const score = feasibilityResult.score
+    const score = displayScore
 
     if (score >= 80) {
       return [
@@ -411,7 +431,7 @@ export default function ProjectDashboardClient({
           /* Empty state - CTA to generate report */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1 flex flex-col gap-6">
-              <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} scoreSource={project.score_source} />
+              <FeasibilityGauge score={displayScore} tier={displayTier} scoreSource={project.score_source} />
               {renderCriteriaBreakdown()}
               {renderConsentCard()}
             </div>
@@ -442,7 +462,7 @@ export default function ProjectDashboardClient({
             
             {/* Left: Gauge + Grants */}
             <div className="md:col-span-1 flex flex-col gap-6">
-              <FeasibilityGauge score={feasibilityResult.score} tier={feasibilityResult.tier} scoreSource={project.score_source} />
+              <FeasibilityGauge score={displayScore} tier={displayTier} scoreSource={project.score_source} />
               {renderCriteriaBreakdown()}
               {renderConsentCard()}
 

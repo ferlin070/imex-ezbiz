@@ -52,12 +52,12 @@ export async function verifySSM(ssmNumber: string): Promise<SSMVerifyResult> {
     }
   }
 
-  // Default fallback: fully eligible
+  // Default fallback: registered but with SHORT age to test real validation
   const defaultDate = new Date()
-  defaultDate.setFullYear(defaultDate.getFullYear() - 2) // 2 years ago
+  defaultDate.setFullYear(defaultDate.getFullYear() - 10) // 10 years ago
   return {
     registered: true,
-    businessName: 'Teknolink Enterprise',
+    businessName: 'Unknown Enterprise',
     status: 'active',
     registrationDate: defaultDate.toISOString().split('T')[0],
     isBumiputera: true,

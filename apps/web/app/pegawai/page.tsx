@@ -40,19 +40,25 @@ export default async function PegawaiDashboard() {
       was_blocked_by_guardrail,
       loan_product:loan_product_id ( name ),
       project:project_id (
+        id,
         title,
-        owner:owner_user_id ( name, email ),
-        business_profile:business_profiles (
-          business_name,
-          ssm_number,
-          owner_full_name,
-          owner_age,
-          is_bumiputera,
-          operating_since
-        )
+        owner_user_id
       )
     `)
     .order('created_at', { ascending: false })
+
+  // 3b. Fetch owner profiles and business data separately
+  const ownerIds = [...new Set((applications || []).map((a: any) => a.project?.owner_user_id).filter(Boolean))]
+  const { data: ownerProfiles } = ownerIds.length > 0
+    ? await supabase.from('profiles').select('id, name, email').in('id', ownerIds)
+    : { data: [] }
+  const ownerMap = Object.fromEntries((ownerProfiles || []).map((p: any) => [p.id, p]))
+
+  // 3c. Fetch company profiles for project owners
+  const { data: companyProfiles } = ownerIds.length > 0
+    ? await supabase.from('company_profiles').select('owner_user_id, business_name, ssm_number, owner_full_name, owner_age, is_bumiputera, operating_since').in('owner_user_id', ownerIds)
+    : { data: [] }
+  const companyMap = Object.fromEntries((companyProfiles || []).map((p: any) => [p.owner_user_id, p]))
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 relative overflow-hidden">
@@ -116,8 +122,8 @@ export default async function PegawaiDashboard() {
             <div className="space-y-6">
               {applications.map((app: any) => {
                 const project = app.project || {}
-                const bizProfile = project.business_profile || {}
-                const owner = project.owner || {}
+                const company = companyMap[project.owner_user_id] || {}
+                const owner = ownerMap[project.owner_user_id] || {}
                 const checks = app.eligibility_output || {}
 
                 return (
@@ -130,14 +136,14 @@ export default async function PegawaiDashboard() {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-extrabold text-base text-white">
-                            {bizProfile.business_name || project.title || 'Syarikat Belum Dinamakan'}
+                            {company.business_name || project.title || 'Syarikat Belum Dinamakan'}
                           </h3>
                           <span className="text-xs bg-slate-950 border border-slate-800 text-slate-400 px-2 py-0.5 rounded">
-                            SSM: {bizProfile.ssm_number || 'Tiada'}
+                            SSM: {company.ssm_number || 'Tiada'}
                           </span>
                         </div>
                         <p className="text-xs text-slate-400 mt-1">
-                          Pemohon: {bizProfile.owner_full_name || owner.name} ({owner.email})
+                          Pemohon: {company.owner_full_name || owner.name} ({owner.email})
                         </p>
                       </div>
 
@@ -184,13 +190,13 @@ export default async function PegawaiDashboard() {
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Had Umur Pemilik (18 - 60):</span>
                             <span className={checks.agePassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                              {bizProfile.owner_age || '-'} Tahun ({checks.agePassed ? "Lepas" : "Gagal"})
+                              {company.owner_age || '-'} Tahun ({checks.agePassed ? "Lepas" : "Gagal"})
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-500">Status Bumiputera:</span>
                             <span className={checks.bumiputeraPassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                              {bizProfile.is_bumiputera ? 'Ya' : 'Bukan'} ({checks.bumiputeraPassed ? "Lepas" : "Gagal"})
+                              {company.is_bumiputera ? 'Ya' : 'Bukan'} ({checks.bumiputeraPassed ? "Lepas" : "Gagal"})
                             </span>
                           </div>
                           <div className="flex justify-between text-xs">

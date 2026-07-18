@@ -1,12 +1,8 @@
 import { logger } from '@/lib/logger'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { AiReportSchema, AiReportInput } from '../schemas/ai-report.schema'
 import { getSystemPrompt } from './supabase/promptConfig'
+import { callOpenRouterJSON, getModel } from './openrouter'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-
-// Updated input type: Takes MARA loan-relevant business context 
-// (replaces old FYP judging criteria breakdown)
 export interface BusinessContext {
   title: string
   description: string
@@ -23,50 +19,8 @@ export interface BusinessContext {
 export async function generateBusinessReport(
   context: BusinessContext
 ): Promise<AiReportInput> {
-  const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: 'object',
-        properties: {
-          swot: {
-            type: 'object',
-            properties: {
-              strengths: { type: 'array', items: { type: 'string' } },
-              weaknesses: { type: 'array', items: { type: 'string' } },
-              opportunities: { type: 'array', items: { type: 'string' } },
-              threats: { type: 'array', items: { type: 'string' } },
-            },
-            required: ['strengths', 'weaknesses', 'opportunities', 'threats'],
-          },
-          blueprint: {
-            type: 'object',
-            properties: {
-              technical: { type: 'array', items: { type: 'string' } },
-              marketing: { type: 'array', items: { type: 'string' } },
-              financial: { type: 'array', items: { type: 'string' } },
-            },
-            required: ['technical', 'marketing', 'financial'],
-          },
-          pitch_script: { type: 'string' },
-          // GUARDRAIL: grant_notes hanya untuk MARA sahaja.
-          // Tiada TEKUN, MDEC, BSN, Bank Komersial, atau mana-mana pembiaya di luar ekosistem MARA.
-          grant_notes: {
-            type: 'object',
-            properties: {
-              mara: { type: 'string' },
-            },
-            required: ['mara'],
-          },
-        },
-        required: ['swot', 'blueprint', 'pitch_script', 'grant_notes'],
-      } as any,
-    },
-    systemInstruction: await getSystemPrompt(),
-  })
+  const systemInstruction = await getSystemPrompt()
 
-  // Build prompt using MARA loan-relevant business context
   const eligibilitySummary = context.eligibilityCriteria.length > 0
     ? context.eligibilityCriteria
         .map(c => `  * ${c.label}: ${c.passed ? '✓ Lulus' : '✗ Tidak Lulus'}`)
@@ -88,46 +42,36 @@ Keputusan Semakan Kelayakan MARA:
 - Pecahan Kriteria Kelayakan:
 ${eligibilitySummary}
 
-Arahan PENTING:
-- Analisis SWOT mesti berdasarkan perniagaan sebenar usahawan ini.
-- Blueprint tindakan mesti praktikal dan khusus kepada ekosistem MARA.
-- Nota geran HANYA untuk skim MARA (PUTRA, SPiM, SPIKE). 
-  JANGAN sebutkan TEKUN, MDEC, BSN, Maybank, CIMB, Bank Komersial, 
-  atau mana-mana pembiaya di luar MARA.
+Keluarkan laporan perniagaan profesional dalam BAHASA MELAYU yang tepat, padat, dan meyakinkan. Jangan guna jargon kosong. Guna data khusus perniagaan usahawan. Setiap bahagian mesti:
 
-Sila jana:
-1. SWOT: Tepat 3-4 mata berkualiti bagi setiap Strengths, Weaknesses, Opportunities, dan Threats.
-2. Actionable Blueprint: 3 fasa (Technical, Marketing, Financial), 3 langkah boleh dilaksanakan bagi setiap fasa.
-3. Skrip Elevator Pitch 60-saat: Berstruktur Hook → Problem → Solution → CTA.
-4. Nota Geran MARA: Cadangan khusus untuk skim pembiayaan MARA yang paling sesuai (1-2 ayat).
+1. SWOT: Tepat 3-4 mata setiap kuadran, berdasarkan perniagaan sebenar. Setiap mata mestilah spesifik (bukan generik).
+2. Blueprint Tindakan: 3 fasa (Teknikal, Pemasaran, Kewangan), 3 langkah praktikal setiap fasa, ada tempoh masa dan KPI.
+3. Elevator Pitch (60 saat): Hook → Masalah → Solusi → CTA. Guna nada peribadi "saya", "kami".
+4. Nota Geran: Hanya skim MARA (PUTRA, SPiM, SPIKE), langsung tiada sebutan TEKUN/MDEC/Maybank/CIMB/BSN.
+
+Format output: strict JSON seperti skema berikut (jangan tambah field lain):
+{
+  "swot": { "strengths": ["..."], "weaknesses": ["..."], "opportunities": ["..."], "threats": ["..."] },
+  "blueprint": { "technical": ["..."], "marketing": ["..."], "financial": ["..."] },
+  "pitch_script": "...",
+  "grant_notes": { "mara": "..." }
+}
 `
 
-  // Define generation function with 1 retry logic and mock fallback
   const runGeneration = async (attempt: number = 1): Promise<AiReportInput> => {
     try {
-      // If key is missing or is placeholder, jump directly to fallback
-      const key = process.env.GEMINI_API_KEY || ''
-      if (!key || key.includes('your-') || key.includes('placeholder')) {
-        throw new Error('API key is missing or is placeholder')
-      }
-
-      const result = await model.generateContent(prompt)
-      const text = result.response.text()
-      if (!text) {
-        throw new Error('Respons kosong daripada Gemini API.')
-      }
-
-      const parsedJson = JSON.parse(text)
-      const validatedData = AiReportSchema.parse(parsedJson)
+      const result = await callOpenRouterJSON<AiReportInput>(prompt, {
+        system: systemInstruction,
+      })
+      const validatedData = AiReportSchema.parse(result)
       return validatedData
     } catch (err: any) {
       if (attempt < 2) {
-        logger.warn(`Panggilan Gemini gagal pada cubaan ${attempt}. Mencuba semula... Ralat:`, err.message)
+        logger.warn(`Panggilan AI gagal pada cubaan ${attempt}. Mencuba semula... Ralat:`, err.message)
         return runGeneration(attempt + 1)
       }
-      
-      // Attempt 2 failed: Fall back to simulated report (MARA-only, guardrail compliant)
-      logger.warn("Gemini API key missing/invalid. Falling back to simulated MARA business report...")
+
+      logger.warn(`AI API gagal selepas 2 cubaan. Guna mock data. Model: ${getModel()}`, err.message)
       return {
         swot: {
           strengths: [
@@ -170,7 +114,6 @@ Sila jana:
         },
         pitch_script: `Assalamualaikum. Perniagaan saya, ${context.businessName}, beroperasi dalam sektor ${context.category || 'perniagaan'} dengan tumpuan kepada ${context.targetMarket || 'pasaran tempatan'}. Produk atau perkhidmatan kami — ${context.title} — menawarkan ${context.usp || 'nilai unik kepada pelanggan kami'}. Kami telah melalui proses semakan kelayakan MARA dan bersedia membawa perniagaan ini ke peringkat seterusnya dengan sokongan pembiayaan RM${context.fundingRequested?.toLocaleString() || 0}. Dana ini akan digunakan untuk mengembangkan kapasiti operasi dan menembusi pasaran yang lebih luas. Kami memohon sokongan MARA untuk merealisasikan potensi penuh perniagaan ini. Terima kasih.`,
         grant_notes: {
-          // GUARDRAIL COMPLIANT: MARA only, no TEKUN/MDEC/Bank Komersial
           mara: `Perniagaan ${context.businessName} layak dinilai untuk Skim Pembiayaan MARA yang sesuai (PUTRA Mikro atau SPiM) berdasarkan kategori perniagaan dan keperluan pembiayaan RM${context.fundingRequested?.toLocaleString() || 0}. Sila berbincang dengan Pegawai PMN MARA untuk pengesahan skim yang paling sesuai.`
         }
       }

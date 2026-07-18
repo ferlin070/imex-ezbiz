@@ -1,6 +1,22 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import { verifySSM } from '../integration/ssm'
+
+export interface EligibilityRules {
+  minSSMAgeMonths: number
+  requiredDocTypes: readonly string[]
+  ssmActiveOnly?: boolean
+  bumiputeraOnly?: boolean
+  minOwnerAge: number
+  maxOwnerAge: number
+}
+
+const defaultRules: EligibilityRules = {
+  minSSMAgeMonths: 12,
+  requiredDocTypes: ['ssm_cert', 'business_plan'],
+  ssmActiveOnly: true,
+  bumiputeraOnly: true,
+  minOwnerAge: 18,
+  maxOwnerAge: 65,
+}
 
 export interface EligibilityInput {
   ssmNumber: string
@@ -23,19 +39,15 @@ export interface EligibilityResult {
   criteria: CriterionResult[]
 }
 
-export async function evaluateEligibility(input: EligibilityInput): Promise<EligibilityResult> {
-  // 1. Load configuration rules
-  const configPath = path.join(process.cwd(), 'data/criteria-config/rules.json')
-  const rules = JSON.parse(fs.readFileSync(configPath, 'utf8'))
-
+export async function evaluateEligibility(
+  input: EligibilityInput,
+  rules?: EligibilityRules
+): Promise<EligibilityResult> {
+  const finalRules = rules || defaultRules
   const criteria: CriterionResult[] = []
 
-  // 2. Fetch SSM Verification
   const ssmResult = await verifySSM(input.ssmNumber)
 
-  // 3. Evaluate criteria
-
-  // a. Registration check
   const ssmRegistered = ssmResult.registered
   criteria.push({
     name: 'Pendaftaran SSM',
@@ -44,7 +56,6 @@ export async function evaluateEligibility(input: EligibilityInput): Promise<Elig
     required: 'Berdaftar dengan SSM',
   })
 
-  // b. SSM Status check
   if (ssmRegistered) {
     const ssmActive = ssmResult.status === 'active'
     criteria.push({
@@ -54,19 +65,18 @@ export async function evaluateEligibility(input: EligibilityInput): Promise<Elig
       required: 'Aktif',
     })
 
-    // c. Haul / Business Age check
     if (ssmResult.registrationDate) {
       const regDate = new Date(ssmResult.registrationDate)
       const now = new Date()
       const diffTime = Math.abs(now.getTime() - regDate.getTime())
       const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.4375))
-      const haulPassed = diffMonths >= rules.minSSMAgeMonths
+      const haulPassed = diffMonths >= finalRules.minSSMAgeMonths
 
       criteria.push({
         name: 'Haul Perniagaan',
         passed: haulPassed,
         actual: `${diffMonths} bulan`,
-        required: `>= ${rules.minSSMAgeMonths} bulan`,
+        required: `>= ${finalRules.minSSMAgeMonths} bulan`,
       })
     }
   } else {
@@ -80,11 +90,10 @@ export async function evaluateEligibility(input: EligibilityInput): Promise<Elig
       name: 'Haul Perniagaan',
       passed: false,
       actual: 'N/A',
-      required: `>= ${rules.minSSMAgeMonths} bulan`,
+      required: `>= ${finalRules.minSSMAgeMonths} bulan`,
     })
   }
 
-  // d. Bumiputera check
   const bumiPassed = input.isBumiputera && (ssmResult.isBumiputera !== false)
   criteria.push({
     name: 'Status Bumiputera',
@@ -93,35 +102,31 @@ export async function evaluateEligibility(input: EligibilityInput): Promise<Elig
     required: 'Pemilik Bumiputera sahaja',
   })
 
-  // e. Owner Age check
-  const agePassed = input.ownerAge >= rules.minOwnerAge && input.ownerAge <= rules.maxOwnerAge
+  const agePassed = input.ownerAge >= finalRules.minOwnerAge && input.ownerAge <= finalRules.maxOwnerAge
   criteria.push({
     name: 'Had Umur Pemohon',
     passed: agePassed,
     actual: `${input.ownerAge} tahun`,
-    required: `${rules.minOwnerAge} - ${rules.maxOwnerAge} tahun`,
+    required: `${finalRules.minOwnerAge} - ${finalRules.maxOwnerAge} tahun`,
   })
 
-  // f. Document completeness check
   const uploadedDocTypes = input.documents.map((d) => d.doc_type)
-  const missingDocs = rules.requiredDocTypes.filter((docType: string) => !uploadedDocTypes.includes(docType))
+  const missingDocs = finalRules.requiredDocTypes.filter((docType: string) => !uploadedDocTypes.includes(docType))
   const docsPassed = missingDocs.length === 0
 
   criteria.push({
     name: 'Dokumen Mandatori',
     passed: docsPassed,
     actual: docsPassed ? 'Lengkap' : `Kurang: ${missingDocs.join(', ')}`,
-    required: rules.requiredDocTypes.join(', '),
+    required: finalRules.requiredDocTypes.join(', '),
   })
 
-  // 4. Summarize results
   const allPassed = criteria.every((c) => c.passed)
-  
+
   let status: EligibilityResult['status'] = 'LULUS'
   let reason = 'Semua kriteria kelayakan pembiayaan MARA dipenuhi.'
 
   if (!allPassed) {
-    // If only document is missing, it's PERLU_TINDAKAN (needs upload)
     const onlyDocsMissing = criteria.every((c) => c.name === 'Dokumen Mandatori' || c.passed)
     if (onlyDocsMissing) {
       status = 'PERLU_TINDAKAN'

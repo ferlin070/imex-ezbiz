@@ -1,22 +1,15 @@
+import { getGuardrailBlockedTerms } from '../../apps/web/lib/config'
+
 export interface GuardrailResult {
   passed: boolean
   cleanText: string
   blockedReason?: string
 }
 
-export function runGuardrail(text: string): GuardrailResult {
-  const forbiddenPatterns = [
-    /\btekun\b/i,
-    /\bsme\s*bank\b/i,
-    /\bsme-bank\b/i,
-    /\bbank\s*komersial\b/i,
-    /\bmaybank\b/i,
-    /\bcimb\b/i,
-    /\bbsn\b/i,
-    /\bpublic\s*bank\b/i,
-    /\brhb\b/i,
-    /\bambank\b/i
-  ]
+export async function runGuardrail(text: string): Promise<GuardrailResult> {
+  const blockedTerms = await getGuardrailBlockedTerms()
+
+  const forbiddenPatterns = blockedTerms.map((term) => new RegExp(`\\b${term.replace(/\s+/g, '\\s*')}\\b`, 'i'))
 
   const hasForbidden = forbiddenPatterns.some((pattern) => pattern.test(text))
 

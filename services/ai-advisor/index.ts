@@ -1,16 +1,13 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import { EligibilityResult } from '../eligibility-engine'
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+import { callOpenRouter, getApiKey } from '../../apps/web/lib/openrouter'
 
 export async function generateActionPlan(
   result: EligibilityResult,
   applicantData: { ssmNumber: string; businessName?: string; ownerAge: number; isBumiputera: boolean }
 ): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getApiKey()
   if (!apiKey) {
-    // Graceful fallback for offline/development mode without API key
-    return generateMockActionPlan(result);
+    return generateMockActionPlan(result)
   }
 
   const systemInstruction = `Anda adalah Agen AI Penasihat Kelayakan Usahawan MARA.
@@ -42,15 +39,13 @@ ${failedCriteriaText || 'Tiada kriteria gagal.'}
 Jana penjelasan keputusan dan pelan tindakan langkah demi langkah secara tersusun dalam format Markdown.`
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
-      systemInstruction,
+    const response = await callOpenRouter(prompt, {
+      system: systemInstruction,
+      responseFormat: undefined, // Plain text markdown output, not JSON
     })
-
-    const response = await model.generateContent(prompt)
-    return response.response.text()
+    return response
   } catch (error) {
-    console.error('Failed calling Gemini API for action plan, falling back to rule-based advice:', error)
+    console.error('AI API call failed for action plan, falling back to rule-based advice:', error)
     return generateMockActionPlan(result)
   }
 }

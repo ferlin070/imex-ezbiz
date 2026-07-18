@@ -1,8 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { Building2, CheckCircle, Save, ArrowLeft, Upload, FileCheck, AlertCircle } from 'lucide-react'
+import { Building2, CheckCircle, Save, ArrowLeft, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import DocumentUpload from '@/components/DocumentUpload'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +43,9 @@ export default async function SyarikatPage() {
     const phone          = formData.get('phone') as string
     const isBumiputera   = formData.get('isBumiputera') === 'true'
 
-    await supabase
+    // Use admin client to bypass RLS for system-level upsert
+    const adminSupabase = createAdminClient()
+    const { error } = await adminSupabase
       .from('company_profiles')
       .upsert({
         owner_user_id: user.id,
@@ -58,6 +61,10 @@ export default async function SyarikatPage() {
         owner_age: ownerAge,
         phone,
       }, { onConflict: 'owner_user_id' })
+
+    if (error) {
+      console.error('Gagal simpan profil syarikat:', error)
+    }
 
     revalidatePath('/usahawan/syarikat')
     revalidatePath('/usahawan')
@@ -262,41 +269,12 @@ export default async function SyarikatPage() {
 
         {/* Sidebar: Dokumen */}
         <div className="space-y-4">
-          <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-4">
-            <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-              <Upload className="w-4 h-4 text-mara-red" />
-              Dokumen Wajib
-            </h3>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Muat naik dokumen berikut untuk menyokong permohonan pembiayaan MARA anda.
-            </p>
-
-            <div className="space-y-2">
-              {[
-                { label: 'Sijil Pendaftaran SSM', key: 'ssm_cert', required: true },
-                { label: 'Kertas Rancangan Perniagaan', key: 'business_plan', required: true },
-                { label: 'Penyata Bank (3 bulan)', key: 'bank_statement', required: false },
-                { label: 'Salinan Kad Pengenalan', key: 'ic_copy', required: true },
-              ].map(doc => (
-                <div key={doc.key} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-                  <FileCheck className="w-4 h-4 text-slate-500 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-slate-300 font-medium truncate">{doc.label}</p>
-                    {doc.required && <p className="text-[9px] text-rose-400">Wajib</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-[10px] text-slate-500 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-              ⚠️ Upload dokumen sebenar akan diaktifkan selepas profil syarikat disimpan. Pastikan semua dokumen dalam format PDF/JPG (max 5MB).
-            </p>
-          </div>
+          <DocumentUpload />
 
           <div className="p-4 rounded-xl bg-mara-red/5 border border-mara-red/20 space-y-2">
             <p className="text-[11px] text-mara-gold font-bold">Tip: Isi sekali, guna berkali</p>
             <p className="text-[10px] text-slate-400 leading-relaxed">
-              Maklumat syarikat ini digunakan secara automatik setiap kali anda mendaftar produk baru — tanpa perlu isi semula.
+              Dokumen yang dimuat naik akan digunakan untuk semua projek dan permohonan pembiayaan anda.
             </p>
           </div>
         </div>
