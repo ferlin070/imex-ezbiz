@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireRole(['entrepreneur', 'admin', 'mara_officer'])
     if (auth.error) return auth.error
-    const { user } = auth
+    const { user, supabase } = auth
 
     const formData = await request.formData()
     const docType = formData.get('doc_type') as string
@@ -39,6 +39,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Format fail tidak sah. Gunakan PDF, JPG, atau PNG.' }, { status: 400 })
     }
 
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('owner_user_id', user.id)
+      .limit(1)
+      .maybeSingle()
+
+    if (!project) {
+      return NextResponse.json({ error: 'Sila daftar profil syarikat terlebih dahulu.' }, { status: 400 })
+    }
+
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
@@ -57,23 +68,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Gagal muat naik dokumen: ' + uploadError.message }, { status: 500 })
     }
 
-    const { error: dbError } = await adminSupabase
+    const { data: existing } = await adminSupabase
       .from('business_documents')
-      .upsert({
-        owner_user_id: user.id,
-        doc_type: docType,
-        storage_path: filePath,
-      }, {
-        onConflict: 'owner_user_id,doc_type',
-      })
+      .select('id')
+      .eq('project_id', project.id)
+      .eq('doc_type', docType)
+      .limit(1)
+      .maybeSingle()
 
-    if (dbError) {
-      return NextResponse.json({ error: 'Gagal menyimpan rekod dokumen.' }, { status: 500 })
+    if (existing) {
+      const { error: dbError } = await adminSupabase
+        .from('business_documents')
+        .update({ storage_path: filePath })
+        .eq('id', existing.id)
+
+      if (dbError) {
+        return NextResponse.json({ error: 'Gagal menyimpan rekod dokumen: ' + dbError.message }, { status: 500 })
+      }
+    } else {
+      const { error: dbError } = await adminSupabase
+        .from('business_documents')
+        .insert({ project_id: project.id, doc_type: docType, storage_path: filePath })
+
+      if (dbError) {
+        return NextResponse.json({ error: 'Gagal menyimpan rekod dokumen: ' + dbError.message }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ success: true, message: 'Dokumen berjaya dimuat naik.' })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Ralat semasa muat naik dokumen.' }, { status: 500 })
+    return NextResponse.json({ error: 'Ralat: ' + (err?.message || err?.stack || JSON.stringify(err)) }, { status: 500 })
   }
 }
 
@@ -81,13 +105,24 @@ export async function GET(request: Request) {
   try {
     const auth = await requireRole(['entrepreneur', 'admin', 'mara_officer'])
     if (auth.error) return auth.error
-    const { user } = auth
+    const { user, supabase } = auth
+
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('owner_user_id', user.id)
+
+    if (!projects || projects.length === 0) {
+      return NextResponse.json({ documents: [] })
+    }
+
+    const projectIds = projects.map(p => p.id)
 
     const adminSupabase = createAdminClient()
     const { data: docs, error } = await adminSupabase
       .from('business_documents')
       .select('doc_type, storage_path, uploaded_at')
-      .eq('owner_user_id', user.id)
+      .in('project_id', projectIds)
 
     if (error) {
       return NextResponse.json({ error: 'Gagal mendapatkan senarai dokumen.' }, { status: 500 })

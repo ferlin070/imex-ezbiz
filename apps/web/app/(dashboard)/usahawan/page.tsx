@@ -517,6 +517,17 @@ export default async function UsahawanDashboard({
                                     {c.passed ? 'LULUS' : 'GAGAL'}
                                   </span>
                                 </div>
+                                {!c.passed && c.monthsRemaining != null && c.eligibleFromDate && (
+                                  <div className="mt-2 text-[10px] text-amber-400 font-bold leading-tight">
+                                    ✓ Layak:{' '}
+                                    {new Date(c.eligibleFromDate).toLocaleDateString('ms-MY', {
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric',
+                                    })}{' '}
+                                    ({c.monthsRemaining} bulan lagi)
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -549,6 +560,7 @@ export default async function UsahawanDashboard({
                       {/* Repayment schedule — only visible once an officer has approved the application */}
                       {app.status === 'approved' && scheduleMap[app.id] && (
                         <RepaymentScheduleCard
+                          applicationId={app.id}
                           monthlyInstallment={Number(scheduleMap[app.id].monthly_installment_myr)}
                           totalRepayment={Number(scheduleMap[app.id].total_repayment_myr)}
                           totalProfit={Number(scheduleMap[app.id].total_profit_myr)}

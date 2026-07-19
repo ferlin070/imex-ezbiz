@@ -15,6 +15,7 @@ import {
   Settings,
   ChevronRight,
 } from 'lucide-react'
+import NotificationBell from '@/components/NotificationBell'
 
 interface Profile {
   id: string
@@ -68,13 +69,16 @@ export default function DashboardShell({ profile, children }: DashboardShellProp
           <Landmark className="w-5 h-5 text-mara-red" />
           <span className="font-extrabold text-sm text-white">MARA AI-Advisor</span>
         </div>
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-          aria-label="Buka / tutup menu navigasi"
-        >
-          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+            aria-label="Buka / tutup menu navigasi"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile backdrop — clicking it closes the sidebar */}
@@ -98,9 +102,12 @@ export default function DashboardShell({ profile, children }: DashboardShellProp
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-mara-red to-mara-gold flex items-center justify-center shadow-lg shadow-mara-red/20 shrink-0">
               <Landmark className="w-5 h-5 text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <span className="font-black text-sm text-white block leading-none">MARA AI-Advisor</span>
               <span className="text-[9px] text-slate-500 font-bold block uppercase tracking-wider mt-0.5">MARA Ecosystem</span>
+            </div>
+            <div className="hidden md:block">
+              <NotificationBell />
             </div>
           </div>
 

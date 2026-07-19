@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger'
 import { requireRole } from '@/lib/auth/requireRole'
 import { NextResponse } from 'next/server'
 import { calculateLoan } from '@/lib/loanCalculator'
+import { createAdminClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const reviewSchema = z.object({
@@ -117,7 +118,39 @@ export async function POST(request: Request, { params }: RouteParams) {
       logger.warn('Gagal mengemaskini status projek:', projectError)
     }
 
-    // 8. Log the access/review action
+    // 8. Insert notification for entrepreneur
+    const { data: project } = await supabase
+      .from('projects')
+      .select('owner_user_id, title')
+      .eq('id', application.project_id)
+      .single()
+
+    if (project) {
+      const notificationType = status === 'approved' ? 'application_approved' : 'application_rejected'
+      const title = status === 'approved'
+        ? 'Permohonan Pembiayaan Diluluskan'
+        : 'Permohonan Pembiayaan Ditolak'
+      const message = status === 'approved'
+        ? `Permohonan ${application.loan_product_id} telah diluluskan oleh pegawai MARA.`
+        : `Permohonan ${application.loan_product_id} telah ditolak. Ulasan pegawai: ${officerNotes}`
+
+      const adminSupabase = createAdminClient()
+      const { error: notifError } = await adminSupabase
+        .from('notifications')
+        .insert({
+          user_id: project.owner_user_id,
+          type: notificationType,
+          title,
+          message,
+          link: '/usahawan',
+        })
+
+      if (notifError) {
+        logger.warn('Gagal insert notifikasi:', notifError)
+      }
+    }
+
+    // 9. Log the access/review action
     const { error: logError } = await supabase
       .from('mara_access_log')
       .insert({

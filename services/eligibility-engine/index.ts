@@ -30,6 +30,8 @@ export interface CriterionResult {
   passed: boolean
   actual: string
   required: string
+  monthsRemaining?: number
+  eligibleFromDate?: string
 }
 
 export interface EligibilityResult {
@@ -72,12 +74,23 @@ export async function evaluateEligibility(
       const diffMonths = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 30.4375))
       const haulPassed = diffMonths >= finalRules.minSSMAgeMonths
 
-      criteria.push({
+      const haulCriterion: CriterionResult = {
         name: 'Haul Perniagaan',
         passed: haulPassed,
         actual: `${diffMonths} bulan`,
         required: `>= ${finalRules.minSSMAgeMonths} bulan`,
-      })
+      }
+
+      if (!haulPassed) {
+        const eligibleDate = new Date(regDate)
+        eligibleDate.setMonth(eligibleDate.getMonth() + finalRules.minSSMAgeMonths)
+        const msRemaining = eligibleDate.getTime() - now.getTime()
+        const monthsRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24 * 30.4375))
+        haulCriterion.monthsRemaining = monthsRemaining
+        haulCriterion.eligibleFromDate = eligibleDate.toISOString()
+      }
+
+      criteria.push(haulCriterion)
     }
   } else {
     criteria.push({

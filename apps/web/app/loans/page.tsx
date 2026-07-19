@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Landmark, ArrowLeft, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { Landmark, ArrowLeft, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import LoanCalculatorWrapper from '@/components/LoanCalculatorWrapper'
 
 export const dynamic = 'force-dynamic'
 
@@ -154,25 +155,9 @@ export default async function LoansPage() {
           )}
         </div>
 
-        {/* Right: Info Panels */}
+        {/* Right: Loan Calculator */}
         <div className="space-y-6">
-          <div className="glass-card rounded-2xl border border-white/5 p-6 bg-slate-950/20 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Kelebihan Pembiayaan MARA</h3>
-            <ul className="text-xs text-slate-400 space-y-3 leading-relaxed">
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-mara-red shrink-0 mt-0.5" />
-                <span>Kadar keuntungan rendah (3.5% - 4% setahun).</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-mara-red shrink-0 mt-0.5" />
-                <span>Jadual anjal dengan tempoh bayaran balik sehingga 7 tahun.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-mara-red shrink-0 mt-0.5" />
-                <span>Tiada penjamin diperlukan untuk skim pembiayaan mikro.</span>
-              </li>
-            </ul>
-          </div>
+          <LoanCalculatorWrapper products={products || []} />
         </div>
       </div>
     </div>

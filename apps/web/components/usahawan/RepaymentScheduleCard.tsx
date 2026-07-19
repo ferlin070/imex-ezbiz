@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Wallet, TrendingUp, CalendarClock } from 'lucide-react'
+import { ChevronDown, ChevronUp, Wallet, TrendingUp, CalendarClock, FileDown } from 'lucide-react'
 
 interface ScheduleItem {
   month: number
@@ -12,11 +12,13 @@ interface ScheduleItem {
 }
 
 export default function RepaymentScheduleCard({
+  applicationId,
   monthlyInstallment,
   totalRepayment,
   totalProfit,
   schedule,
 }: {
+  applicationId: string
   monthlyInstallment: number
   totalRepayment: number
   totalProfit: number
@@ -86,6 +88,15 @@ export default function RepaymentScheduleCard({
         <TrendingUp className="w-3 h-3" />
         Anggaran dijana automatik berdasarkan amaun & tenure yang diluluskan pegawai MARA.
       </p>
+
+      <a
+        href={`/api/pdf/repayment/${applicationId}`}
+        download
+        className="w-full flex items-center justify-center gap-1.5 py-2 bg-gradient-to-r from-mara-red to-mara-gold text-white font-bold rounded-xl text-xs transition-all shadow-[0_0_10px_rgba(194,14,26,0.15)] hover:shadow-[0_0_15px_rgba(194,14,26,0.3)] cursor-pointer"
+      >
+        <FileDown className="w-3.5 h-3.5" />
+        Muat Turun Jadual Bayaran (PDF)
+      </a>
     </div>
   )
 }
