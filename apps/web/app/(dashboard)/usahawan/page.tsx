@@ -3,6 +3,12 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { Plus, Landmark, AlertCircle, FileText, ArrowRight, ShieldAlert, CheckCircle, HelpCircle, Edit2, FileCheck, Building2, AlertTriangle } from 'lucide-react'
+import { evaluateEligibility, type EligibilityResult } from '@services/eligibility-engine'
+import { getEligibilityRules } from '@/lib/config'
+import ReadinessCheckCard from '@/components/usahawan/ReadinessCheckCard'
+import DocumentChecklistMini from '@/components/usahawan/DocumentChecklistMini'
+import RepaymentScheduleCard from '@/components/usahawan/RepaymentScheduleCard'
+import ActionItemsBanner, { type ActionItem } from '@/components/usahawan/ActionItemsBanner'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,10 +31,11 @@ export default async function UsahawanDashboard({
     .eq('owner_user_id', user.id)
     .order('created_at', { ascending: false })
 
-  // 2b. Fasa B: Check if company profile exists (1:1 per user)
+  // 2b. Fasa B: Check if company profile exists (1:1 per user) — fetch FULL row
+  //     (needed both for the readiness self-check and existing UI).
   const { data: companyProfile } = await supabase
     .from('company_profiles')
-    .select('id, business_name, owner_full_name')
+    .select('*')
     .eq('owner_user_id', user.id)
     .maybeSingle()
 
@@ -53,6 +60,68 @@ export default async function UsahawanDashboard({
       .order('created_at', { ascending: false })
 
     applications = data || []
+  }
+
+  // 3b. Fetch company-level documents (used by both the readiness check
+  //     and the mini document checklist widget on this dashboard).
+  const { data: myDocuments } = await supabase
+    .from('business_documents')
+    .select('doc_type')
+    .eq('owner_user_id', user.id)
+  const uploadedDocTypes = (myDocuments || []).map((d: any) => d.doc_type)
+
+  // 3c. Live self-check: run the SAME deterministic eligibility engine used
+  //     by the real loan application flow, so the entrepreneur can see
+  //     exactly what's missing BEFORE submitting an application (instead of
+  //     only finding out afterwards).
+  let readinessResult: EligibilityResult | null = null
+  if (hasCompanyProfile) {
+    const eligibilityRules = await getEligibilityRules()
+    readinessResult = await evaluateEligibility(
+      {
+        ssmNumber: companyProfile.ssm_number || 'TIDAK_DIISI',
+        ownerAge: companyProfile.owner_age || 30,
+        isBumiputera: companyProfile.is_bumiputera ?? true,
+        documents: uploadedDocTypes.map((doc_type: string) => ({ doc_type })),
+      },
+      eligibilityRules
+    )
+  }
+
+  // 3d. Fetch repayment schedules for any APPROVED applications so the
+  //     entrepreneur can actually see the schedule that was generated for
+  //     them (previously only visible internally to MARA officers).
+  const approvedApplicationIds = applications.filter((a: any) => a.status === 'approved').map((a: any) => a.id)
+  const { data: schedules } = approvedApplicationIds.length > 0
+    ? await supabase
+        .from('loan_repayment_schedules')
+        .select('*')
+        .in('loan_application_id', approvedApplicationIds)
+    : { data: [] }
+  const scheduleMap = Object.fromEntries((schedules || []).map((s: any) => [s.loan_application_id, s]))
+
+  // 3e. Aggregate a single prioritized "what to do next" list across
+  //     the readiness check + any PERLU_TINDAKAN / TIDAK_LULUS applications.
+  const actionItems: ActionItem[] = []
+  if (!hasCompanyProfile) {
+    actionItems.push({ text: 'Lengkapkan profil syarikat anda untuk mula memohon geran MARA.', href: '/usahawan/syarikat', ctaLabel: 'Isi Profil' })
+  } else if (readinessResult && !readinessResult.eligible) {
+    for (const c of readinessResult.criteria.filter((c) => !c.passed)) {
+      actionItems.push({
+        text: `${c.name}: ${c.actual} (perlu: ${c.required})`,
+        href: c.name === 'Dokumen Mandatori' ? '/usahawan/syarikat' : '/usahawan/syarikat',
+        ctaLabel: 'Kemaskini',
+      })
+    }
+  }
+  for (const app of applications) {
+    if (app.eligibility_status === 'PERLU_TINDAKAN' && app.ai_action_plan) {
+      actionItems.push({
+        text: `Permohonan "${app.loan_products?.name}" perlu tindakan susulan — semak pelan tindakan AI di bawah.`,
+        href: '#permohonan',
+        ctaLabel: 'Lihat Butiran',
+      })
+    }
   }
 
   // 4. Server Action: Save product/innovation (product fields only)
@@ -156,10 +225,16 @@ export default async function UsahawanDashboard({
         )}
       </div>
 
+      <ActionItemsBanner items={actionItems} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
         {/* Left Column: Company Link + Product Form */}
         <div className="lg:col-span-1 space-y-4">
+
+          {/* Readiness self-check + document checklist */}
+          <ReadinessCheckCard result={readinessResult} hasCompanyProfile={hasCompanyProfile} />
+          {hasCompanyProfile && <DocumentChecklistMini uploadedDocTypes={uploadedDocTypes} />}
 
           {/* Company Profile check banner / link */}
           {!hasCompanyProfile ? (
@@ -360,7 +435,7 @@ export default async function UsahawanDashboard({
           </div>
 
           {/* Section 2: Active Applications status */}
-          <div className="space-y-4">
+          <div id="permohonan" className="space-y-4 scroll-mt-6">
             <h2 className="text-xl font-bold text-slate-200">Permohonan & Kelayakan MARA</h2>
 
             {!hasProjects ? (
@@ -469,6 +544,16 @@ export default async function UsahawanDashboard({
                             {app.ai_action_plan}
                           </div>
                         </div>
+                      )}
+
+                      {/* Repayment schedule — only visible once an officer has approved the application */}
+                      {app.status === 'approved' && scheduleMap[app.id] && (
+                        <RepaymentScheduleCard
+                          monthlyInstallment={Number(scheduleMap[app.id].monthly_installment_myr)}
+                          totalRepayment={Number(scheduleMap[app.id].total_repayment_myr)}
+                          totalProfit={Number(scheduleMap[app.id].total_profit_myr)}
+                          schedule={scheduleMap[app.id].schedule || []}
+                        />
                       )}
                     </div>
                   )
