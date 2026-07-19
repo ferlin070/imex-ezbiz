@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Landmark, ShieldAlert, CheckCircle, AlertTriangle, XCircle } from 'lucide-react'
+import { Landmark, Clock3 } from 'lucide-react'
 import LogoutButton from '@/components/LogoutButton'
+import ApplicationsBoard, { ApplicationRow } from '@/components/pegawai/ApplicationsBoard'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,7 @@ export default async function PegawaiDashboard() {
     redirect('/login')
   }
 
-  // 3. Fetch all loan applications
+  // 3. Fetch all loan applications (now including review `status`, officer notes & approved terms)
   const { data: applications } = await supabase
     .from('loan_applications')
     .select(`
@@ -38,6 +39,9 @@ export default async function PegawaiDashboard() {
       eligibility_output,
       ai_action_plan,
       was_blocked_by_guardrail,
+      officer_notes,
+      approved_amount_myr,
+      approved_tenure_months,
       loan_product:loan_product_id ( name ),
       project:project_id (
         id,
@@ -54,11 +58,42 @@ export default async function PegawaiDashboard() {
     : { data: [] }
   const ownerMap = Object.fromEntries((ownerProfiles || []).map((p: any) => [p.id, p]))
 
-  // 3c. Fetch company profiles for project owners
+  // 3c. Fetch FULL company profiles for project owners (used for the officer's company-profile modal)
   const { data: companyProfiles } = ownerIds.length > 0
-    ? await supabase.from('company_profiles').select('owner_user_id, business_name, ssm_number, owner_full_name, owner_age, is_bumiputera, operating_since').in('owner_user_id', ownerIds)
+    ? await supabase.from('company_profiles').select('*').in('owner_user_id', ownerIds)
     : { data: [] }
   const companyMap = Object.fromEntries((companyProfiles || []).map((p: any) => [p.owner_user_id, p]))
+
+  // 4. Normalize rows for the client board component
+  const rows: ApplicationRow[] = (applications || []).map((app: any) => {
+    const project = app.project || {}
+    const company = companyMap[project.owner_user_id] || {}
+    const owner = ownerMap[project.owner_user_id] || {}
+
+    return {
+      id: app.id,
+      requestedAmount: Number(app.requested_amount_myr),
+      requestedTenure: app.requested_tenure_months,
+      status: app.status || 'submitted',
+      eligibilityStatus: app.eligibility_status,
+      createdAt: app.created_at,
+      loanProductName: app.loan_product?.name || '-',
+      businessName: company.business_name || project.title || 'Syarikat Belum Dinamakan',
+      ssmNumber: company.ssm_number || '',
+      ownerFullName: company.owner_full_name || owner.name || '',
+      ownerEmail: owner.email || '',
+      ownerId: project.owner_user_id || '',
+      checks: app.eligibility_output || {},
+      aiActionPlan: app.ai_action_plan,
+      wasBlockedByGuardrail: !!app.was_blocked_by_guardrail,
+      officerNotes: app.officer_notes,
+      approvedAmount: app.approved_amount_myr,
+      approvedTenure: app.approved_tenure_months,
+      company,
+    }
+  })
+
+  const pendingCount = rows.filter((r) => r.status === 'submitted' || r.status === 'under_review').length
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 relative overflow-hidden">
@@ -85,27 +120,33 @@ export default async function PegawaiDashboard() {
         </div>
 
         {/* Overview Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-6">
           <div className="p-5 bg-slate-900/40 border border-slate-850 rounded-2xl">
             <span className="text-xs text-slate-500 font-bold uppercase block">Jumlah Permohonan</span>
-            <span className="text-2xl font-extrabold text-white">{applications?.length || 0}</span>
+            <span className="text-2xl font-extrabold text-white">{rows.length}</span>
+          </div>
+          <div className="p-5 bg-slate-900/40 border border-sky-500/20 rounded-2xl">
+            <span className="text-xs text-slate-500 font-bold uppercase flex items-center gap-1">
+              <Clock3 className="w-3 h-3" /> Menunggu Tindakan
+            </span>
+            <span className="text-2xl font-extrabold text-sky-400">{pendingCount}</span>
           </div>
           <div className="p-5 bg-slate-900/40 border border-slate-850 rounded-2xl">
             <span className="text-xs text-slate-500 font-bold uppercase block">Status LULUS</span>
             <span className="text-2xl font-extrabold text-emerald-400">
-              {applications?.filter((a: any) => a.eligibility_status === 'LULUS').length || 0}
+              {rows.filter((r) => r.eligibilityStatus === 'LULUS').length}
             </span>
           </div>
           <div className="p-5 bg-slate-900/40 border border-slate-850 rounded-2xl">
             <span className="text-xs text-slate-500 font-bold uppercase block">Status PERLU TINDAKAN</span>
             <span className="text-2xl font-extrabold text-amber-400">
-              {applications?.filter((a: any) => a.eligibility_status === 'PERLU_TINDAKAN').length || 0}
+              {rows.filter((r) => r.eligibilityStatus === 'PERLU_TINDAKAN').length}
             </span>
           </div>
           <div className="p-5 bg-slate-900/40 border border-slate-850 rounded-2xl">
             <span className="text-xs text-slate-500 font-bold uppercase block">Blocked By Guardrail</span>
             <span className="text-2xl font-extrabold text-rose-400">
-              {applications?.filter((a: any) => a.was_blocked_by_guardrail).length || 0}
+              {rows.filter((r) => r.wasBlockedByGuardrail).length}
             </span>
           </div>
         </div>
@@ -114,132 +155,12 @@ export default async function PegawaiDashboard() {
         <div className="space-y-6">
           <h2 className="text-lg font-bold text-slate-200">Senarai Permohonan Pembiayaan</h2>
 
-          {!applications || applications.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="p-12 text-center rounded-2xl bg-slate-950/40 border border-slate-905 text-slate-500 text-sm">
               Tiada permohonan pembiayaan usahawan dikemukakan setakat ini.
             </div>
           ) : (
-            <div className="space-y-6">
-              {applications.map((app: any) => {
-                const project = app.project || {}
-                const company = companyMap[project.owner_user_id] || {}
-                const owner = ownerMap[project.owner_user_id] || {}
-                const checks = app.eligibility_output || {}
-
-                return (
-                  <div 
-                    key={app.id} 
-                    className="p-6 bg-slate-900/20 border border-slate-850 rounded-2xl space-y-6 hover:border-slate-800 transition"
-                  >
-                    {/* Main Row */}
-                    <div className="flex flex-col lg:flex-row justify-between items-start gap-4 pb-4 border-b border-slate-850">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-extrabold text-base text-white">
-                            {company.business_name || project.title || 'Syarikat Belum Dinamakan'}
-                          </h3>
-                          <span className="text-xs bg-slate-950 border border-slate-800 text-slate-400 px-2 py-0.5 rounded">
-                            SSM: {company.ssm_number || 'Tiada'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Pemohon: {company.owner_full_name || owner.name} ({owner.email})
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-500 block uppercase font-bold">Skim Diminta</span>
-                          <span className="text-sm font-extrabold text-slate-200">{app.loan_product?.name}</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-500 block uppercase font-bold">Amaun & Tenure</span>
-                          <span className="text-sm font-extrabold text-slate-200">
-                            RM{Number(app.requested_amount_myr).toLocaleString()} ({app.requested_tenure_months} Bulan)
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800">
-                          {app.eligibility_status === 'LULUS' && (
-                            <>
-                              <CheckCircle className="w-4 h-4 text-emerald-400" />
-                              <span className="text-xs font-black text-emerald-400">LULUS RULES</span>
-                            </>
-                          )}
-                          {app.eligibility_status === 'TIDAK_LULUS' && (
-                            <>
-                              <XCircle className="w-4 h-4 text-rose-400" />
-                              <span className="text-xs font-black text-rose-400">TIDAK LULUS</span>
-                            </>
-                          )}
-                          {app.eligibility_status === 'PERLU_TINDAKAN' && (
-                            <>
-                              <AlertTriangle className="w-4 h-4 text-amber-400" />
-                              <span className="text-xs font-black text-amber-400">PERLU TINDAKAN</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Breakdown & Recommendations Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Rules Engine Output */}
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-bold text-slate-400 tracking-wider uppercase">Hasil Semakan Rules Engine</h4>
-                        <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900 space-y-2.5">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500">Had Umur Pemilik (18 - 60):</span>
-                            <span className={checks.agePassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                              {company.owner_age || '-'} Tahun ({checks.agePassed ? "Lepas" : "Gagal"})
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500">Status Bumiputera:</span>
-                            <span className={checks.bumiputeraPassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                              {company.is_bumiputera ? 'Ya' : 'Bukan'} ({checks.bumiputeraPassed ? "Lepas" : "Gagal"})
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500">Pendaftaran SSM (Aktif):</span>
-                            <span className={checks.ssmActivePassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                              {checks.ssmActivePassed ? "Aktif" : "Tidak Aktif/Gagal"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500">Tempoh Matang Bisnes (Haul):</span>
-                            <span className={checks.haulPassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                              {checks.haulDurationMonths !== undefined ? `${checks.haulDurationMonths} Bulan` : 'Gagal'} ({checks.haulPassed ? "Lepas" : "Gagal"})
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-slate-500">Dokumen Wajib Dimuat Naik:</span>
-                            <span className={checks.documentsPassed ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
-                              {checks.documentsPassed ? "Lengkap" : "Tidak Lengkap"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* AI Advisor Plan */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-400 tracking-wider uppercase">Syor & Pelan Tindakan AI</h4>
-                          {app.was_blocked_by_guardrail && (
-                            <span className="flex items-center gap-1 text-[9px] bg-rose-500/10 border border-rose-500/20 text-rose-400 px-2 py-0.5 rounded font-black">
-                              <ShieldAlert className="w-3 h-3" />
-                              Guardrail Blocked competitor leakage
-                            </span>
-                          )}
-                        </div>
-                        <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-900 text-xs text-slate-300 leading-relaxed max-h-[160px] overflow-y-auto whitespace-pre-wrap">
-                          {app.ai_action_plan || 'Tiada pelan tindakan AI dihasilkan.'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <ApplicationsBoard applications={rows} />
           )}
         </div>
       </div>
