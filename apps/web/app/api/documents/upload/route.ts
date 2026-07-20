@@ -39,7 +39,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Format fail tidak sah. Gunakan PDF, JPG, atau PNG.' }, { status: 400 })
     }
 
-    const { data: project } = await supabase
+    const adminSupabase = createAdminClient()
+
+    let { data: project } = await supabase
       .from('projects')
       .select('id')
       .eq('owner_user_id', user.id)
@@ -47,13 +49,30 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (!project) {
-      return NextResponse.json({ error: 'Sila daftar profil syarikat terlebih dahulu.' }, { status: 400 })
+      const { data: company } = await supabase
+        .from('company_profiles')
+        .select('business_name')
+        .eq('owner_user_id', user.id)
+        .maybeSingle()
+
+      const { data: newProject } = await adminSupabase
+        .from('projects')
+        .insert({
+          owner_user_id: user.id,
+          title: company?.business_name || 'Profil Syarikat',
+          description: 'Profil syarikat dan dokumen perniagaan.',
+        })
+        .select('id')
+        .single()
+
+      if (!newProject) {
+        return NextResponse.json({ error: 'Gagal mencipta projek.' }, { status: 400 })
+      }
+      project = newProject
     }
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
-
-    const adminSupabase = createAdminClient()
     const filePath = `${user.id}/${docType}.${ext}`
 
     const { error: uploadError } = await adminSupabase
