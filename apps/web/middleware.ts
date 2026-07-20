@@ -64,9 +64,17 @@ export async function middleware(request: NextRequest) {
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
   const role = profile?.role
+
+  // If profile doesn't exist, redirect to login (session is stale)
+  if (!profile) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
 
   // Role-based access control: redirect to correct dashboard if accessing wrong role's area
   const isOfficerPath = OFFICER_PATHS.some(p => pathname.startsWith(p))
