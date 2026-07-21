@@ -501,20 +501,24 @@ export default async function UsahawanDashboard({
                       {app.eligibility_output && app.eligibility_output.criteria && (
                         <div className="space-y-3">
                           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pecahan Semakan Kriteria Automatik:</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3 text-xs">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-xs">
                             {app.eligibility_output.criteria.map((c: any, index: number) => (
                               <div
                                 key={index}
-                                className={`p-3 rounded-xl border flex flex-col justify-between min-h-[80px] ${
+                                className={`p-3 rounded-xl border flex flex-col justify-between min-h-[90px] ${
                                   c.passed
                                     ? 'bg-emerald-500/5 border-emerald-500/10 text-slate-300'
                                     : 'bg-rose-500/5 border-rose-500/10 text-slate-300'
                                 }`}
                               >
-                                <span className="font-bold text-slate-400 block truncate">{c.name}</span>
-                                <div className="mt-2 flex justify-between items-center">
-                                  <span className="text-[10px] text-slate-500">{c.actual}</span>
-                                  <span className={`font-extrabold ${c.passed ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                <span className="font-bold text-slate-300 text-[11px] block leading-snug">{c.name}</span>
+                                <div className="mt-2 pt-2 border-t border-slate-800/60 flex items-center justify-between gap-2">
+                                  <span className="text-[10px] text-slate-400 font-medium truncate" title={c.actual}>{c.actual || 'N/A'}</span>
+                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-md shrink-0 ${
+                                    c.passed 
+                                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                  }`}>
                                     {c.passed ? 'LULUS' : 'GAGAL'}
                                   </span>
                                 </div>
