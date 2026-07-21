@@ -76,9 +76,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Akses dinafikan. Anda bukan pemilik projek ini.' }, { status: 403 })
     }
 
-    // 4. A5 FIX: Fetch business profile & uploaded documents IN PARALLEL
-    //    (saves ~50-150ms per request vs sequential await)
-    const [{ data: bizProfile }, { data: documents }] = await Promise.all([
+    // 4. A5 FIX: Fetch business profile, uploaded documents AND company profile IN PARALLEL
+    //    BUGFIX: Query documents by BOTH project_id AND owner_user_id because
+    //    older uploads (before bug fix) had owner_user_id=NULL, and new uploads
+    //    have both. Merging both result sets ensures all docs are visible.
+    const [{ data: bizProfile }, { data: docsByProject }, { data: docsByOwner }, { data: companyProfile }] = await Promise.all([
       supabase
         .from('business_profiles')
         .select('*')
@@ -88,19 +90,38 @@ export async function POST(request: Request) {
         .from('business_documents')
         .select('doc_type')
         .eq('project_id', projectId),
+      supabase
+        .from('business_documents')
+        .select('doc_type')
+        .eq('owner_user_id', user.id),
+      supabase
+        .from('company_profiles')
+        .select('ssm_number, owner_age, is_bumiputera, operating_since')
+        .eq('owner_user_id', user.id)
+        .maybeSingle(),
     ])
 
+    // Merge and deduplicate documents by doc_type
+    const allDocsMap = new Map<string, { doc_type: string }>()
+    for (const d of [...(docsByProject || []), ...(docsByOwner || [])]) {
+      allDocsMap.set(d.doc_type, d)
+    }
+    const documents = Array.from(allDocsMap.values())
+
     // 5. Run deterministic rules engine (synchronous — fast)
-    const ownerAge = bizProfile?.owner_age || 30
-    const isBumiputera = bizProfile?.is_bumiputera ?? true
-    const ssmNumber = bizProfile?.ssm_number || 'SSM-NOT-FOUND'
+    // Priority: company_profiles > business_profiles (company_profiles is the authoritative source)
+    const ownerAge = companyProfile?.owner_age ?? bizProfile?.owner_age ?? 30
+    const isBumiputera = companyProfile?.is_bumiputera ?? bizProfile?.is_bumiputera ?? true
+    const ssmNumber = companyProfile?.ssm_number ?? bizProfile?.ssm_number ?? 'TIDAK_DIISI'
+    const operatingSince = companyProfile?.operating_since ?? null
 
     const eligibilityRules = await getEligibilityRules()
     const eligibility = await evaluateEligibility({
       ssmNumber,
       ownerAge,
       isBumiputera,
-      documents: documents || []
+      operatingSince,
+      documents: documents
     }, eligibilityRules)
 
     // 6. A4 OPSYEN B: Guardrail check on plain text eligibility summary only (fast)

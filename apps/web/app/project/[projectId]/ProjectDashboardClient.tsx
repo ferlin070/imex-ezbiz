@@ -93,6 +93,20 @@ export default function ProjectDashboardClient({
   const [maraVisible, setMaraVisible] = useState(project.mara_visible)
   const [updatingConsent, setUpdatingConsent] = useState(false)
 
+  // Real loan products from Supabase (replaces hardcoded grant mapping)
+  const [loanProducts, setLoanProducts] = useState<{ id: string; name: string; description: string; min_amount_myr: number; max_amount_myr: number }[]>([])
+
+  useEffect(() => {
+    // Fetch real MARA loan products from Supabase
+    supabase
+      .from('loan_products')
+      .select('id, name, description, min_amount_myr, max_amount_myr')
+      .eq('active', true)
+      .then(({ data }) => {
+        if (data) setLoanProducts(data)
+      })
+  }, [supabase])
+
   // Countdown timer for rate limiting
   useEffect(() => {
     if (countdown > 0) {
@@ -178,53 +192,6 @@ export default function ProjectDashboardClient({
     }
   }
 
-  // Safe helper to map feasibility status for MARA focus
-  const getGrantMapping = () => {
-    const score = displayScore
-
-    if (score >= 80) {
-      return [
-        {
-          key: 'mara_spiim',
-          title: 'Skim Pembiayaan Kontrak MARA (SPIIM)',
-          desc: 'Sangat Disyorkan. Projek anda melepasi kelayakan teknikal/komersial peringkat tinggi MARA. Anda layak memohon pembiayaan projek sehingga RM500,000.',
-        },
-        {
-          key: 'mara_express',
-          title: 'Skim Pembiayaan Express MARA',
-          desc: 'Kelayakan tinggi. Kelulusan pembiayaan segera sehingga RM50,000 untuk meningkatkan kapasiti operasi perniagaan TVET/Inovasi.',
-        },
-      ]
-    } else if (score >= 50) {
-      return [
-        {
-          key: 'mara_pemasaran',
-          title: 'Geran Pembangunan Pemasaran MARA',
-          desc: 'Layak Komersial. Bantuan kewangan pengiklanan & pameran sehingga RM10,000 untuk meningkatkan keterlihatan produk inovasi.',
-        },
-        {
-          key: 'mara_micro',
-          title: 'Skim Pembiayaan Mikro MARA',
-          desc: 'Perniagaan anda layak memohon pembiayaan mikro modal kerja sehingga RM20,000 dengan dokumen sedia ada.',
-        },
-      ]
-    } else {
-      return [
-        {
-          key: 'mara_tvet',
-          title: 'Skim Keusahawanan TVET MARA',
-          desc: 'Berpotensi. Disyorkan menjalani bimbingan inkubator MARA sebelum permohonan pembiayaan berskala penuh dilakukan.',
-        },
-        {
-          key: 'mara_bimbingan',
-          title: 'Khidmat Nasihat Keusahawanan (IPD MARA)',
-          desc: 'Bimbingan pembangunan produk, pembungkusan dan pendaftaran SSM untuk melayakkan skim pembiayaan pada masa hadapan.',
-        },
-      ]
-    }
-  }
-
-  const grantMapping = getGrantMapping()
 
   const renderCriteriaBreakdown = () => (
     <div className="glass-card rounded-xl border border-white/5 p-5 flex flex-col gap-4">
@@ -431,7 +398,7 @@ export default function ProjectDashboardClient({
           /* Empty state - CTA to generate report */
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="md:col-span-1 flex flex-col gap-6">
-              <FeasibilityGauge score={displayScore} tier={displayTier} scoreSource={project.score_source} />
+              <FeasibilityGauge score={displayScore} tier={displayTier} scoreSource="mara_eligibility" />
               {renderCriteriaBreakdown()}
               {renderConsentCard()}
             </div>
@@ -462,21 +429,28 @@ export default function ProjectDashboardClient({
             
             {/* Left: Gauge + Grants */}
             <div className="md:col-span-1 flex flex-col gap-6">
-              <FeasibilityGauge score={displayScore} tier={displayTier} scoreSource={project.score_source} />
+              <FeasibilityGauge score={displayScore} tier={displayTier} scoreSource="mara_eligibility" />
               {renderCriteriaBreakdown()}
               {renderConsentCard()}
 
-              {/* Grant notes card */}
+              {/* Grant notes card — real loan products from Supabase */}
               <div className="glass-card rounded-xl border border-white/5 p-5 flex flex-col gap-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Kelayakan Pembiayaan & Geran</h3>
-                <div className="space-y-4">
-                  {grantMapping.map((g) => (
-                    <div key={g.key} className="space-y-1">
-                      <span className="text-[10px] font-black uppercase text-mara-red block">{g.title}</span>
-                      <p className="text-[11px] text-gray-400 leading-relaxed bg-navy-950/60 p-2.5 rounded border border-white/5">{g.desc}</p>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Skim Pembiayaan MARA</h3>
+                {loanProducts.length === 0 ? (
+                  <p className="text-[11px] text-gray-500">Tiada skim aktif pada masa ini.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {loanProducts.map((p) => (
+                      <div key={p.id} className="space-y-1">
+                        <span className="text-[10px] font-black uppercase text-mara-red block">{p.name}</span>
+                        <p className="text-[11px] text-gray-400 leading-relaxed bg-navy-950/60 p-2.5 rounded border border-white/5">
+                          {p.description}<br />
+                          <span className="text-mara-gold font-bold">RM{Number(p.min_amount_myr).toLocaleString()} – RM{Number(p.max_amount_myr).toLocaleString()}</span>
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

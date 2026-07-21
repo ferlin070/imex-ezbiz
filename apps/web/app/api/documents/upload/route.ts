@@ -87,10 +87,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Gagal muat naik dokumen: ' + uploadError.message }, { status: 500 })
     }
 
+    // FIX: Use owner_user_id as primary lookup key (migration added this column).
+    // Previously INSERT never populated owner_user_id → NULL → eligibility engine
+    // couldn't find the doc when querying by project_id either, causing "Kurang: ssm_cert, business_plan".
     const { data: existing } = await adminSupabase
       .from('business_documents')
       .select('id')
-      .eq('project_id', project.id)
+      .eq('owner_user_id', user.id)
       .eq('doc_type', docType)
       .limit(1)
       .maybeSingle()
@@ -98,7 +101,7 @@ export async function POST(request: Request) {
     if (existing) {
       const { error: dbError } = await adminSupabase
         .from('business_documents')
-        .update({ storage_path: filePath })
+        .update({ storage_path: filePath, project_id: project.id })
         .eq('id', existing.id)
 
       if (dbError) {
@@ -107,7 +110,12 @@ export async function POST(request: Request) {
     } else {
       const { error: dbError } = await adminSupabase
         .from('business_documents')
-        .insert({ project_id: project.id, doc_type: docType, storage_path: filePath })
+        .insert({
+          project_id: project.id,
+          owner_user_id: user.id,   // FIX: was missing — caused NULL owner_user_id
+          doc_type: docType,
+          storage_path: filePath,
+        })
 
       if (dbError) {
         return NextResponse.json({ error: 'Gagal menyimpan rekod dokumen: ' + dbError.message }, { status: 500 })

@@ -82,6 +82,7 @@ export default async function UsahawanDashboard({
         ssmNumber: companyProfile.ssm_number || 'TIDAK_DIISI',
         ownerAge: companyProfile.owner_age || 30,
         isBumiputera: companyProfile.is_bumiputera ?? true,
+        operatingSince: companyProfile.operating_since || null,
         documents: uploadedDocTypes.map((doc_type: string) => ({ doc_type })),
       },
       eligibilityRules

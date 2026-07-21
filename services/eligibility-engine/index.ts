@@ -23,6 +23,8 @@ export interface EligibilityInput {
   ownerAge: number
   isBumiputera: boolean
   documents: { doc_type: string }[]
+  /** ISO date string from company_profiles.operating_since — passed to verifySSM */
+  operatingSince?: string | null
 }
 
 export interface CriterionResult {
@@ -48,7 +50,10 @@ export async function evaluateEligibility(
   const finalRules = rules || defaultRules
   const criteria: CriterionResult[] = []
 
-  const ssmResult = await verifySSM(input.ssmNumber)
+  const ssmResult = await verifySSM(input.ssmNumber, {
+    registrationDate: input.operatingSince,
+    isBumiputera: input.isBumiputera,
+  })
 
   const ssmRegistered = ssmResult.registered
   criteria.push({
